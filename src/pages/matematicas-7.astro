@@ -1,0 +1,17 @@
+---
+import Layout from "../layouts/Layout.astro";
+import Matematicas7Page from "../components/pages/Matematicas7Page";
+import "@/styles/global.css";
+---
+
+<Layout title="Matemáticas 7 | Mattics">
+    <div slot="head">
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+        <link
+            href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+            rel="stylesheet"
+        />
+    </div>
+    <Matematicas7Page client:only="react" />
+</Layout>
