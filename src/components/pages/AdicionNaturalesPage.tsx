@@ -7,6 +7,7 @@ import { FlowContainer } from "@/components/layout/FlowContainer"
 import { DecimalGroupingVisual } from "@/components/adicion-naturales/DecimalGroupingVisual"
 import { CentenaGroupingVisual } from "@/components/adicion-naturales/CentenaGroupingVisual"
 import { MultiLevelGroupingVisual } from "@/components/adicion-naturales/MultiLevelGroupingVisual"
+import { VerticalAdditionVisual } from "@/components/adicion-naturales/VerticalAdditionVisual"
 import { Plus, Lightbulb, CheckCircle2, ArrowRight } from "lucide-react"
 
 export default function AdicionNaturalesPage() {
@@ -53,22 +54,16 @@ export default function AdicionNaturalesPage() {
                         <MultiLevelGroupingVisual />
                     </section>
 
-                    {/* BLOQUE 3: Conceptos de la Suma */}
+
+                    {/* BLOQUE 4: Algoritmo de la Suma Vertical */}
                     <section className="space-y-6">
-                        <h3 className="heading-3">La Regla de Oro</h3>
-                        <div className="grid gap-4">
-                            <div className="flex items-center gap-4 p-4 bg-white dark:bg-zinc-900 rounded-xl border border-slate-100 dark:border-zinc-800 shadow-sm transition-hover hover:shadow-md">
-                                <div className="h-10 w-10 rounded-full bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center text-blue-600 font-bold">1</div>
-                                <p className="font-medium">Los números naturales siempre nos llevan hacia la <b>derecha</b> en la recta numérica.</p>
-                            </div>
-                            <div className="flex items-center gap-4 p-4 bg-white dark:bg-zinc-900 rounded-xl border border-slate-100 dark:border-zinc-800 shadow-sm transition-hover hover:shadow-md">
-                                <div className="h-10 w-10 rounded-full bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center text-blue-600 font-bold">2</div>
-                                <p className="font-medium">El resultado de sumar dos naturales siempre será otro <b>número natural</b>.</p>
-                            </div>
-                        </div>
+                        <p className="text-xl text-slate-600 dark:text-zinc-400 leading-relaxed font-medium">
+                            Otra forma de hacerlo es:
+                        </p>
+                        <VerticalAdditionVisual />
                     </section>
 
-                    {/* BLOQUE 4: Ejemplo Final Visual */}
+                    {/* BLOQUE 5: Ejemplo Final Visual */}
                     <section className="space-y-8">
                         <h2 className="heading-2 text-indigo-600 dark:text-indigo-400 border-indigo-100">Pongámoslo en práctica</h2>
                         <div className="bg-gradient-to-br from-indigo-600 to-violet-700 p-10 rounded-3xl text-white shadow-xl flex flex-col items-center">
