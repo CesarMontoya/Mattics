@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Puntos ordenados</title>
+  <style>
+    body {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      background: #f5f5f5;
+    }
+  </style>
+</head>
+<body>
+  <svg id="canvas" width="600" height="400" style="border:1px solid #333; background:white;">
+    <!-- Los círculos se crearán dinámicamente con JS -->
+  </svg>
+
+  <script>
+    const svg = document.getElementById("canvas");
+    const width = svg.clientWidth;
+    const height = svg.clientHeight;
+
+    const numBlue = 27;
+    const numRed = 6;
+    const radius = 8;
+    const spacing = 30; // separación entre puntos
+    const cols = 10;    // agrupación en decenas
+
+    function createCircle(x, y, color) {
+      const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+      circle.setAttribute("cx", x);
+      circle.setAttribute("cy", y);
+      circle.setAttribute("r", radius);
+      circle.setAttribute("fill", color);
+      svg.appendChild(circle);
+    }
+
+    function init() {
+      let total = numBlue + numRed;
+      let row = 0, col = 0;
+
+      // Primero los azules
+      for (let i = 0; i < numBlue; i++) {
+        let x = 50 + col * spacing;
+        let y = 50 + row * spacing;
+        createCircle(x, y, "blue");
+
+        col++;
+        if (col >= cols) {
+          col = 0;
+          row++;
+        }
+      }
+
+      // Luego los rojos
+      for (let i = 0; i < numRed; i++) {
+        let x = 50 + col * spacing;
+        let y = 50 + row * spacing;
+        createCircle(x, y, "red");
+
+        col++;
+        if (col >= cols) {
+          col = 0;
+          row++;
+        }
+      }
+    }
+
+    init();
+  </script>
+</body>
+</html>

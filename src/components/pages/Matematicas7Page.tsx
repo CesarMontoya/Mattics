@@ -3,7 +3,7 @@
 import * as React from "react"
 import { SidebarLayout } from "@/components/layouts/SidebarLayout"
 import { PageContent } from "@/components/layout/PageContent"
-import { BookOpen, Calculator, Plus, Minus, X, Divide } from "lucide-react"
+import { BookOpen, Calculator, Plus, Minus, X, Divide, Binary } from "lucide-react"
 
 
 export default function Matematicas7Page() {
@@ -23,6 +23,13 @@ export default function Matematicas7Page() {
                 {/* Topics Grid */}
                 <div className="grid gap-4 md:grid-cols-2">
                     <TopicCard
+                        title="Sistema Decimal"
+                        description="Aprende cómo funciona nuestro sistema de numeración"
+                        icon={Binary}
+                        href="/matematicas-7/sistema-decimal"
+                        gradient="from-indigo-500 to-purple-600"
+                    />
+                    <TopicCard
                         title="Adición de Números Naturales"
                         description="Aprende a sumar cantidades de forma sencilla y divertida"
                         icon={Plus}
@@ -30,11 +37,11 @@ export default function Matematicas7Page() {
                         gradient="from-emerald-500 to-teal-600"
                     />
                     <TopicCard
-                        title="Sustracción"
+                        title="Sustracción de Números Naturales"
                         description="Domina la resta y sus aplicaciones"
                         icon={Minus}
-                        href="#"
-                        gradient="from-blue-500 to-cyan-600"
+                        href="/matematicas-7/sustraccion-naturales"
+                        gradient="from-rose-500 to-pink-600"
                     />
                     <TopicCard
                         title="Multiplicación"

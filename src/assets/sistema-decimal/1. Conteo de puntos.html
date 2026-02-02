@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Conteo de puntos</title>
+  <style>
+    body {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      background: #f5f5f5;
+    }
+  </style>
+</head>
+<body>
+  <svg id="canvas" width="600" height="400" style="border:1px solid #333; background:white;">
+    <!-- Los círculos se crearán dinámicamente con JS -->
+  </svg>
+
+  <script>
+    const svg = document.getElementById("canvas");
+    const width = svg.clientWidth;
+    const height = svg.clientHeight;
+
+    // Configuración de puntos
+    const numBlue = 27;
+    const numRed = 6;
+    const radius = 8;
+    const speed = 2.5; // velocidad de movimiento
+
+    let circles = [];
+
+    function createCircle(x, y, color) {
+      const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+      circle.setAttribute("cx", x);
+      circle.setAttribute("cy", y);
+      circle.setAttribute("r", radius);
+      circle.setAttribute("fill", color);
+      svg.appendChild(circle);
+      return circle;
+    }
+
+    function randomVelocity() {
+      // velocidad aleatoria en x y y
+      return (Math.random() * 2 - 1) * speed;
+    }
+
+    function init() {
+      // Crear puntos azules
+      for (let i = 0; i < numBlue; i++) {
+        let x = Math.random() * (width - 2 * radius) + radius;
+        let y = Math.random() * (height - 2 * radius) + radius;
+        let circle = createCircle(x, y, "blue");
+        circles.push({circle, vx: randomVelocity(), vy: randomVelocity()});
+      }
+
+      // Crear puntos rojos
+      for (let i = 0; i < numRed; i++) {
+        let x = Math.random() * (width - 2 * radius) + radius;
+        let y = Math.random() * (height - 2 * radius) + radius;
+        let circle = createCircle(x, y, "red");
+        circles.push({circle, vx: randomVelocity(), vy: randomVelocity()});
+      }
+    }
+
+    function animate() {
+      circles.forEach(obj => {
+        let cx = parseFloat(obj.circle.getAttribute("cx"));
+        let cy = parseFloat(obj.circle.getAttribute("cy"));
+
+        cx += obj.vx;
+        cy += obj.vy;
+
+        // Rebote en los bordes
+        if (cx - radius < 0 || cx + radius > width) obj.vx *= -1;
+        if (cy - radius < 0 || cy + radius > height) obj.vy *= -1;
+
+        obj.circle.setAttribute("cx", cx);
+        obj.circle.setAttribute("cy", cy);
+      });
+
+      requestAnimationFrame(animate);
+    }
+
+    init();
+    animate();
+  </script>
+</body>
+</html>

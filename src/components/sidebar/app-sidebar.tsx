@@ -4,7 +4,6 @@ import * as React from "react"
 import {
   BookOpen,
   Bot,
-  Command,
   Frame,
   LifeBuoy,
   Map,
@@ -45,9 +44,10 @@ const data = {
           title: "Números Naturales",
           url: "#",
           items: [
-            { title: "Sistema Decimal", url: "#" },
+            { title: "Sistema Decimal", url: "/matematicas-7/sistema-decimal" },
             { title: "Adición de Números Naturales", url: "/matematicas-7/adicion-naturales" },
-            { title: "Sustracción de Números Naturales", url: "#" },
+            { title: "Actividad: Adición de Números Naturales", url: "/matematicas-7/actividad-adicion-naturales" },
+            { title: "Sustracción de Números Naturales", url: "/matematicas-7/sustraccion-naturales" },
             { title: "Multiplicación de Números Naturales", url: "#" },
             { title: "División de Números Naturales", url: "#" },
             { title: "Potenciación de Números Naturales", url: "#" },
@@ -112,8 +112,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           <SidebarMenuItem>
             <SidebarMenuButton size="lg" asChild>
               <a href="/">
-                <div className="bg-sidebar-primary text-sidebar-primary-foreground flex aspect-square size-8 items-center justify-center rounded-lg">
-                  <Command className="size-4" />
+                <div className="flex aspect-square size-10 items-center justify-center rounded-lg overflow-hidden">
+                  <img src="/favicon.svg" alt="Mattics Logo" className="size-full" />
                 </div>
                 <div className="grid flex-1 text-left text-sm leading-tight">
                   <span className="truncate font-medium">Mattics</span>
