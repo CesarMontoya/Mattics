@@ -46,8 +46,8 @@ const data = {
           items: [
             { title: "Sistema Decimal", url: "/matematicas-7/sistema-decimal" },
             { title: "Adición de Números Naturales", url: "/matematicas-7/adicion-naturales" },
-            { title: "Actividad: Adición de Números Naturales", url: "/matematicas-7/actividad-adicion-naturales" },
             { title: "Sustracción de Números Naturales", url: "/matematicas-7/sustraccion-naturales" },
+            { title: "Actividad: Adición y Sustracción", url: "/matematicas-7/actividad-adicion-sustraccion-naturales" },
             { title: "Multiplicación de Números Naturales", url: "#" },
             { title: "División de Números Naturales", url: "#" },
             { title: "Potenciación de Números Naturales", url: "#" },

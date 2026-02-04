@@ -1,0 +1,99 @@
+---
+import Layout from "@/layouts/Layout.astro";
+import { MathSymbolsBackground } from "@/components/NotFound/MathSymbolsBackground";
+import { Button } from "@/components/ui/sidebar/button";
+import { Home, MoveLeft } from "lucide-react";
+import "@/styles/global.css";
+---
+
+<Layout title="404 - Página no encontrada | Mattics">
+  <main class="relative min-h-screen w-full flex flex-col items-center justify-center overflow-hidden bg-background">
+    <!-- Animated Mathematical Background -->
+    <MathSymbolsBackground client:load />
+
+    <div class="relative z-10 text-center px-4">
+      <div class="mb-12 flex flex-col items-center animate-in fade-in zoom-in duration-700">
+        <a href="/" class="mb-8 hover:scale-105 transition-transform duration-300">
+          <div class="flex aspect-square size-16 items-center justify-center rounded-2xl overflow-hidden shadow-2xl shadow-primary/20 ring-1 ring-border bg-card">
+            <img src="/favicon.svg" alt="Mattics Logo" class="size-10" />
+          </div>
+        </a>
+        
+        <div class="relative group flex flex-col items-center justify-center mt-12">
+          <div class="absolute -top-16 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-all duration-700 text-xs md:text-sm font-mono text-primary/40 whitespace-nowrap select-none pointer-events-none">
+            &nexists; &#123; x | x &in; Mattics &#125;
+          </div>
+          
+          <div class="relative flex items-center justify-center select-none font-black text-primary/5 transition-all duration-700 group-hover:text-primary/10 tracking-[-0.05em]">
+            <!-- Diagonal "PÁGINA" -->
+            <div class="absolute -top-12 left-0 md:-top-20 md:left-4 rotate-[-25deg] origin-bottom-left">
+              <div class="text-3xl md:text-5xl font-black text-foreground tracking-widest transform transition-transform duration-500 group-hover:scale-110">
+                PÁGINA
+              </div>
+            </div>
+
+            <!-- The 404 digits -->
+            <span class="text-[10rem] md:text-[16rem]">404</span>
+          </div>
+
+          <div class="mt-4 flex flex-col items-center">
+            <div class="text-3xl md:text-5xl font-bold tracking-tight bg-linear-to-b from-foreground to-foreground/70 bg-clip-text text-transparent">
+              No encontrada
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="max-w-md mx-auto mt-12 space-y-8 animate-in fade-in slide-in-from-bottom-8 duration-1000 delay-300 fill-mode-both">
+        <p class="text-lg md:text-xl text-muted-foreground text-center leading-relaxed">
+          Has llegado a un <span class="text-foreground font-semibold">punto indefinido</span> en nuestro plano. 
+          Parece que la ecuación de esta página no tiene solución.
+        </p>
+
+        <div class="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
+          <Button id="home-button" variant="default" size="lg" className="group rounded-full px-8 h-12 text-base transition-all hover:shadow-xl hover:shadow-primary/20 hover:-translate-y-0.5">
+            <Home className="mr-2 size-5 transition-transform group-hover:-translate-y-0.5" />
+            Volver al Inicio
+          </Button>
+          <Button id="back-button" variant="outline" size="lg" className="rounded-full px-8 h-12 text-base transition-all hover:bg-accent hover:-translate-y-0.5">
+            <MoveLeft className="mr-2 size-5 transition-transform group-hover:-translate-x-1" />
+            Regresar
+          </Button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Decorative elements -->
+    <div class="absolute top-1/4 left-1/4 size-64 bg-primary/5 rounded-full blur-3xl -z-10 animate-pulse"></div>
+    <div class="absolute bottom-1/4 right-1/4 size-96 bg-primary/10 rounded-full blur-3xl -z-10 animate-pulse delay-1000"></div>
+  </main>
+</Layout>
+
+<style>
+  /* Ensure the background covers everything but doesn't block interactions if needed */
+  main {
+    touch-action: none;
+  }
+
+  @keyframes bounce-slow {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-10px); }
+  }
+
+  .animate-bounce-slow {
+    animation: bounce-slow 3s ease-in-out infinite;
+  }
+</style>
+
+<script>
+  // Handlers for buttons
+  const backBtn = document.getElementById('back-button');
+  if (backBtn) {
+    backBtn.addEventListener('click', () => history.back());
+  }
+
+  const homeBtn = document.getElementById('home-button');
+  if (homeBtn) {
+    homeBtn.addEventListener('click', () => window.location.href = '/');
+  }
+</script>
