@@ -1,4 +1,6 @@
+import * as React from "react"
 import { ChevronRight, type LucideIcon } from "lucide-react"
+import { useMenuState } from "@/hooks/use-persistent-menu"
 
 import {
   Collapsible,
@@ -28,12 +30,19 @@ export function NavMain({
     items?: any[]
   }[]
 }) {
+  const { openItems, setOpen } = useMenuState()
+
   return (
     <SidebarGroup>
       <SidebarGroupLabel>Plataforma</SidebarGroupLabel>
       <SidebarMenu>
         {items.map((item) => (
-          <Collapsible key={item.title} asChild defaultOpen={item.isActive}>
+          <Collapsible
+            key={item.title}
+            asChild
+            open={openItems[item.title] ?? item.isActive}
+            onOpenChange={(open) => setOpen(item.title, open)}
+          >
             <SidebarMenuItem>
               <SidebarMenuButton asChild tooltip={item.title}>
                 <a href={item.url}>
@@ -54,7 +63,11 @@ export function NavMain({
                       {item.items?.map((subItem: any) => (
                         <SidebarMenuSubItem key={subItem.title}>
                           {subItem.items?.length ? (
-                            <Collapsible key={subItem.title}>
+                            <Collapsible
+                              key={subItem.title}
+                              open={openItems[subItem.title]}
+                              onOpenChange={(open) => setOpen(subItem.title, open)}
+                            >
                               <div className="flex flex-col">
                                 <div className="flex items-center w-full">
                                   <SidebarMenuSubButton asChild>

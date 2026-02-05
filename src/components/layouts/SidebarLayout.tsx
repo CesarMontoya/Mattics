@@ -2,6 +2,8 @@
 
 import * as React from "react"
 import { AppSidebar } from "@/components/sidebar/app-sidebar"
+import { MenuStateProvider } from "@/hooks/use-persistent-menu"
+
 import {
     Breadcrumb,
     BreadcrumbItem,
@@ -29,7 +31,9 @@ interface SidebarLayoutProps {
 
 export function SidebarLayout({ children, breadcrumbs = [] }: SidebarLayoutProps) {
     return (
-        <SidebarProvider>
+        <MenuStateProvider>
+            <SidebarProvider>
+
             <AppSidebar />
             <SidebarInset>
                 <header className="flex h-16 shrink-0 items-center gap-2 transition-[width,height] ease-linear group-has-[[data-collapsible=icon]]/sidebar-wrapper:h-12">
@@ -75,6 +79,7 @@ export function SidebarLayout({ children, breadcrumbs = [] }: SidebarLayoutProps
 
             </SidebarInset>
         </SidebarProvider>
+        </MenuStateProvider>
     )
 }
 
