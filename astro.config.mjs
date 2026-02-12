@@ -13,7 +13,7 @@ export default defineConfig({
   vite: {
     plugins: [tailwindcss()]
   },
-
+  site: 'https://mattics.xyz',
   output: "server",
   integrations: [react()],
   adapter: node({
