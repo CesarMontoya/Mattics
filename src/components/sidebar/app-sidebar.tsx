@@ -50,7 +50,7 @@ const data = {
             { title: "Actividad: Adición y Sustracción", url: "/matematicas-7/actividad-adicion-sustraccion-naturales" },
             { title: "Multiplicación de Números Naturales", url: "/matematicas-7/multiplicacion-naturales" },
             { title: "División de Números Naturales", url: "/matematicas-7/division-naturales" },
-            { title: "Potenciación de Números Naturales", url: "#" },
+            { title: "Potenciación de Números Naturales", url: "/matematicas-7/potenciacion-naturales" },
             { title: "Radicación de Números Naturales", url: "#" },
             { title: "Logaritmación de Números Naturales", url: "#" },
           ],
