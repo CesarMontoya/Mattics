@@ -1,0 +1,82 @@
+---
+import Layout from "../layouts/Layout.astro";
+import "@/styles/global.css";
+---
+
+<Layout title="Política de Privacidad | Mattics">
+    <div slot="head">
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+        <link
+            href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+            rel="stylesheet"
+        />
+        <meta name="description" content="Conoce cómo protegemos tus datos personales en Mattics." />
+    </div>
+
+    <main class="max-w-4xl mx-auto px-6 py-16 md:py-24">
+        <header class="mb-16">
+            <h1 class="heading-1 mb-4">Política de Privacidad</h1>
+            <p class="text-muted-foreground text-lg">Última actualización: {new Date().toLocaleDateString('es-ES', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
+        </header>
+
+        <section class="prose prose-slate dark:prose-invert max-w-none">
+            <h2 class="heading-2">1. Introducción</h2>
+            <p class="text-foreground/80 leading-relaxed mb-6">
+                En Mattics, valoramos tu privacidad y nos comprometemos a proteger tus datos personales. Esta Política de Privacidad explica cómo recopilamos, usamos y protegemos la información cuando utilizas nuestra plataforma educativa.
+            </p>
+
+            <h2 class="heading-2">2. Información que Recopilamos</h2>
+            <p class="text-foreground/80 leading-relaxed mb-4">
+                Podemos recopilar los siguientes tipos de información:
+            </p>
+            <ul class="list-disc pl-6 space-y-2 text-foreground/80 mb-6">
+                <li>Información de contacto (nombre, correo electrónico).</li>
+                <li>Información de uso (páginas visitadas, tiempo dedicado a las actividades).</li>
+                <li>Datos técnicos (dirección IP, tipo de navegador, sistema operativo).</li>
+            </ul>
+
+            <h2 class="heading-2">3. Uso de la Información</h2>
+            <p class="text-foreground/80 leading-relaxed mb-4">
+                Utilizamos la información recopilada para:
+            </p>
+            <ul class="list-disc pl-6 space-y-2 text-foreground/80 mb-6">
+                <li>Proporcionar y mejorar nuestros servicios educativos.</li>
+                <li>Personalizar tu experiencia de aprendizaje.</li>
+                <li>Comunicarnos contigo sobre actualizaciones o soporte técnico.</li>
+                <li>Analizar el rendimiento de la plataforma.</li>
+            </ul>
+
+            <h2 class="heading-2">4. Protección de Datos</h2>
+            <p class="text-foreground/80 leading-relaxed mb-6">
+                Implementamos medidas de seguridad técnicas y organizativas para proteger tus datos contra el acceso no autorizado, la alteración o la destrucción. Sin embargo, ningún método de transmisión por Internet es 100% seguro.
+            </p>
+
+            <h2 class="heading-2">5. Cookies</h2>
+            <p class="text-foreground/80 leading-relaxed mb-6">
+                Utilizamos cookies para mejorar la funcionalidad de nuestro sitio. Puedes configurar tu navegador para rechazar todas las cookies o para que te avise cuando se envíe una.
+            </p>
+
+            <h2 class="heading-2">6. Tus Derechos</h2>
+            <p class="text-foreground/80 leading-relaxed mb-6">
+                Tienes derecho a acceder, rectificar o eliminar tus datos personales. Para ejercer estos derechos, por favor contáctanos a través de los medios proporcionados al final de esta política.
+            </p>
+
+            <h2 class="heading-2">7. Cambios en esta Política</h2>
+            <p class="text-foreground/80 leading-relaxed mb-6">
+                Nos reservamos el derecho de actualizar esta Política de Privacidad en cualquier momento. Te notificaremos sobre cualquier cambio sustancial publicando la nueva política en esta página.
+            </p>
+
+            <h2 class="heading-2">8. Contacto</h2>
+            <p class="text-foreground/80 leading-relaxed">
+                Si tienes preguntas sobre esta Política de Privacidad, puedes contactarnos en:
+                <br />
+                <strong>Email:</strong> contacto@mattics.xyz
+            </p>
+        </section>
+
+        <footer class="mt-24 pt-8 border-t border-border">
+            <a href="/" class="text-primary hover:underline font-medium">← Volver al inicio</a>
+        </footer>
+    </main>
+</Layout>

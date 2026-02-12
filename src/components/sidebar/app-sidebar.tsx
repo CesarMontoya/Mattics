@@ -11,6 +11,8 @@ import {
   Send,
   Settings2,
   SquareTerminal,
+  Shield,
+  FileText,
 } from "lucide-react"
 
 import { NavMain } from "@/components/sidebar/nav-main"
@@ -80,6 +82,16 @@ const data = {
 
   navSecondary: [
     {
+      title: "Política de Privacidad",
+      url: "/politica-de-privacidad",
+      icon: Shield,
+    },
+    {
+      title: "Condiciones del Servicio",
+      url: "/condiciones-del-servicio",
+      icon: FileText,
+    },
+    {
       title: "Soporte",
       url: "#",
       icon: LifeBuoy,
@@ -127,7 +139,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       <SidebarContent>
         <NavMain items={data.navMain} />
         {/* <NavProjects projects={data.projects} /> */}
-        {/* <NavSecondary items={data.navSecondary} className="mt-auto" /> */}
+        <NavSecondary items={data.navSecondary} className="mt-auto" />
       </SidebarContent>
       {/* <SidebarFooter>
         <NavUser user={data.user} />

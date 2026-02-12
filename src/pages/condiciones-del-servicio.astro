@@ -1,0 +1,81 @@
+---
+import Layout from "../layouts/Layout.astro";
+import "@/styles/global.css";
+---
+
+<Layout title="Condiciones del Servicio | Mattics">
+    <div slot="head">
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+        <link
+            href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+            rel="stylesheet"
+        />
+        <meta name="description" content="Términos y condiciones de uso de la plataforma educativa Mattics." />
+    </div>
+
+    <main class="max-w-4xl mx-auto px-6 py-16 md:py-24">
+        <header class="mb-16">
+            <h1 class="heading-1 mb-4">Condiciones del Servicio</h1>
+            <p class="text-muted-foreground text-lg">Última actualización: {new Date().toLocaleDateString('es-ES', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
+        </header>
+
+        <section class="prose prose-slate dark:prose-invert max-w-none">
+            <h2 class="heading-2">1. Aceptación de los Términos</h2>
+            <p class="text-foreground/80 leading-relaxed mb-6">
+                Al acceder y utilizar Mattics, aceptas cumplir y estar sujeto a las siguientes condiciones del servicio. Si no estás de acuerdo con alguno de estos términos, por favor no utilices la plataforma.
+            </p>
+
+            <h2 class="heading-2">2. Uso de la Plataforma</h2>
+            <p class="text-foreground/80 leading-relaxed mb-4">
+                Mattics es una plataforma educativa diseñada para el aprendizaje de las matemáticas. Te comprometes a:
+            </p>
+            <ul class="list-disc pl-6 space-y-2 text-foreground/80 mb-6">
+                <li>Utilizar la plataforma únicamente con fines educativos y lícitos.</li>
+                <li>No realizar actividades que puedan dañar, interferir o sobrecargar nuestros servidores.</li>
+                <li>No intentar acceder de forma no autorizada a ninguna parte del sitio.</li>
+            </ul>
+
+            <h2 class="heading-2">3. Propiedad Intelectual</h2>
+            <p class="text-foreground/80 leading-relaxed mb-6">
+                Todo el contenido disponible en Mattics, incluyendo textos, gráficos, logotipos, imágenes y software, es propiedad de Mattics o de sus colaboradores y está protegido por las leyes de propiedad intelectual. No se permite la reproducción total o parcial sin autorización previa.
+            </p>
+
+            <h2 class="heading-2">4. Registro y Seguridad de la Cuenta</h2>
+            <p class="text-foreground/80 leading-relaxed mb-6">
+                Si creas una cuenta en nuestra plataforma, eres responsable de mantener la confidencialidad de tu contraseña y de todas las actividades que ocurran bajo tu cuenta.
+            </p>
+
+            <h2 class="heading-2">5. Limitación de Responsabilidad</h2>
+            <p class="text-foreground/80 leading-relaxed mb-6">
+                Mattics se esfuerza por proporcionar contenido preciso y actualizado, pero no garantiza que la plataforma esté libre de errores o interrupciones. No nos hacemos responsables de cualquier daño directo o indirecto derivado del uso de nuestros servicios.
+            </p>
+
+            <h2 class="heading-2">6. Enlaces a Terceros</h2>
+            <p class="text-foreground/80 leading-relaxed mb-6">
+                Nuestro sitio puede contener enlaces a sitios web de terceros. No tenemos control sobre el contenido o las políticas de privacidad de dichos sitios y no asumimos ninguna responsabilidad por ellos.
+            </p>
+
+            <h2 class="heading-2">7. Modificaciones del Servicio</h2>
+            <p class="text-foreground/80 leading-relaxed mb-6">
+                Nos reservamos el derecho de modificar, suspender o interrumpir cualquier aspecto del servicio en cualquier momento sin previo aviso.
+            </p>
+
+            <h2 class="heading-2">8. Ley Aplicable</h2>
+            <p class="text-foreground/80 leading-relaxed mb-6">
+                Estas condiciones se rigen e interpretan de acuerdo con las leyes vigentes del país de operación de Mattics.
+            </p>
+
+            <h2 class="heading-2">9. Contacto</h2>
+            <p class="text-foreground/80 leading-relaxed">
+                Para cualquier consulta sobre estas condiciones, escríbenos a:
+                <br />
+                <strong>Email:</strong> contacto@mattics.xyz
+            </p>
+        </section>
+
+        <footer class="mt-24 pt-8 border-t border-border">
+            <a href="/" class="text-primary hover:underline font-medium">← Volver al inicio</a>
+        </footer>
+    </main>
+</Layout>
