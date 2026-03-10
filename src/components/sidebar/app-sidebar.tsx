@@ -53,8 +53,9 @@ const data = {
             { title: "División", url: "/matematicas-7/division-naturales" },
             { title: "Potenciación", url: "/matematicas-7/potenciacion-naturales" },
             { title: "Radicación", url: "/matematicas-7/radicacion-naturales" },
-            { title: "Logaritmación", url: "#" },
+            { title: "Logaritmación", url: "/matematicas-7/logaritmacion-naturales" },
             { title: "Actividad: Adición y Sustracción", url: "/matematicas-7/actividad-adicion-sustraccion-naturales" },
+            { title: "Ruta: La Tríada Aritmética", url: "/matematicas-7/actividad-triada-aritmetica" },
           ],
         },
         {
@@ -75,6 +76,17 @@ const data = {
         {
           title: "Álgebra",
           url: "#",
+        },
+      ],
+    },
+    {
+      title: "Tecnología 8",
+      url: "#",
+      icon: Settings2,
+      items: [
+        {
+          title: "Energía",
+          url: "/tecnologia-8/energia",
         },
       ],
     },

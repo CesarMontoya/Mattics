@@ -1,0 +1,17 @@
+---
+import Layout from "../../layouts/Layout.astro";
+import RutaTriadaPage from "../../components/pages/RutaTriadaPage";
+import "@/styles/global.css";
+---
+
+<Layout title="Ruta Tríada Aritmética - Mattics">
+    <div slot="head">
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+        <link
+            href="https://fonts.googleapis.com/css2?family=Quicksand:wght@500;600;700&display=swap"
+            rel="stylesheet"
+        />
+    </div>
+    <RutaTriadaPage client:load />
+</Layout>
