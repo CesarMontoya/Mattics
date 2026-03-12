@@ -54,6 +54,7 @@ const data = {
             { title: "Potenciación", url: "/matematicas-7/potenciacion-naturales" },
             { title: "Radicación", url: "/matematicas-7/radicacion-naturales" },
             { title: "Logaritmación", url: "/matematicas-7/logaritmacion-naturales" },
+            { title: "La Tríada Aritmética (Teoría)", url: "/matematicas-7/la-triada-aritmetica" },
             { title: "Actividad: Adición y Sustracción", url: "/matematicas-7/actividad-adicion-sustraccion-naturales" },
             { title: "Ruta: La Tríada Aritmética", url: "/matematicas-7/actividad-triada-aritmetica" },
           ],
