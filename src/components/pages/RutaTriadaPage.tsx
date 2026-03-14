@@ -13,6 +13,9 @@ import { cn } from "@/lib/utils"
 import { useStudent } from "@/hooks/use-student"
 import { registerAttempt, registerPillCompletion } from "@/lib/tracking"
 import { StudentLogin } from "./StudentLogin"
+import 'katex/dist/katex.min.css'
+import katex from 'katex'
+
 
 // ─────────────────────────────────────────────
 // TYPES & CONSTANTS
@@ -91,15 +94,37 @@ const OptionButton = ({ label, selected, submitted, correct, onClick }: {
     )
 }
 
+const MathText = ({ text }: { text: string }) => {
+    if (!text) return null
+    const parts = text.split(/(\$.*?\$)/g)
+    return (
+        <>
+            {parts.map((part, i) => {
+                if (part.startsWith('$') && part.endsWith('$')) {
+                    const math = part.slice(1, -1)
+                    try {
+                        const html = katex.renderToString(math, { throwOnError: false })
+                        return <span key={i} dangerouslySetInnerHTML={{ __html: html }} />
+                    } catch (e) {
+                        return <span key={i}>{math}</span>
+                    }
+                }
+                return <span key={i}>{part}</span>
+            })}
+        </>
+    )
+}
+
 // ─────────────────────────────────────────────
 // PILL 1 – CONCEPTO DE POTENCIA (Tablero de Ajedrez)
 // ─────────────────────────────────────────────
 
 const PILL1_QS = [
-    { id: "p1q1", q: "En 2³, ¿cuál es la base?", options: ["2", "3", "8", "6"], correct: "2" },
-    { id: "p1q2", q: "En 5², ¿cuál es el exponente?", options: ["5", "2", "10", "25"], correct: "2" },
-    { id: "p1q3", q: "¿Cuánto vale 3²?", options: ["6", "8", "9", "12"], correct: "9" },
+    { id: "p1q1", q: "En $2^3$, ¿cuál es la base?", options: ["2", "3", "8", "6"], correct: "2" },
+    { id: "p1q2", q: "En $5^2$, ¿cuál es el exponente?", options: ["5", "2", "10", "25"], correct: "2" },
+    { id: "p1q3", q: "¿Cuánto vale $3^2$?", options: ["6", "8", "9", "12"], correct: "9" },
 ]
+
 
 const ChessVisual = () => {
     const [clicked, setClicked] = React.useState<number | null>(null)
@@ -140,22 +165,24 @@ const ChessVisual = () => {
 // ─────────────────────────────────────────────
 
 const PILL2_QS = [
-    { id: "p2q1", q: "2³ × 2⁴ = 2^?", hint: "Producto de igual base: suma los exponentes", options: ["12", "7", "1", "6"], correct: "7" },
-    { id: "p2q2", q: "3⁶ ÷ 3² = 3^?", hint: "Cociente de igual base: resta los exponentes", options: ["3", "4", "8", "12"], correct: "4" },
-    { id: "p2q3", q: "(5²)³ = 5^?", hint: "Potencia de potencia: multiplica los exponentes", options: ["5", "6", "8", "9"], correct: "6" },
-    { id: "p2q4", q: "7⁰ = ?", hint: "Cualquier número elevado a cero es 1", options: ["0", "7", "1", "∞"], correct: "1" },
+    { id: "p2q1", q: "$2^3 \\times 2^4 = 2^{\\boxed{?}}$", hint: "Producto de igual base: suma los exponentes", options: ["12", "7", "1", "6"], correct: "7" },
+    { id: "p2q2", q: "$3^6 \\div 3^2 = 3^{\\boxed{?}}$", hint: "Cociente de igual base: resta los exponentes", options: ["3", "4", "8", "12"], correct: "4" },
+    { id: "p2q3", q: "$(5^2)^3 = 5^{\\boxed{?}}$", hint: "Potencia de potencia: multiplica los exponentes", options: ["5", "6", "8", "9"], correct: "6" },
+    { id: "p2q4", q: "$7^0 = \\boxed{?}$", hint: "Cualquier número elevado a cero es 1", options: ["0", "7", "1", "∞"], correct: "1" },
 ]
+
 
 // ─────────────────────────────────────────────
 // PILL 3 – RADICACIÓN GEOMÉTRICA
 // ─────────────────────────────────────────────
 
 const PILL3_QS = [
-    { id: "p3q1", q: "√144 = ?", hint: "¿Qué número multiplicado por sí mismo da 144?", options: ["11", "12", "13", "14"], correct: "12" },
-    { id: "p3q2", q: "∛27 = ?", hint: "¿Qué número al cubo da 27?", options: ["2", "3", "4", "9"], correct: "3" },
-    { id: "p3q3", q: "√196 = ?", hint: "14 × 14 = 196", options: ["13", "16", "14", "15"], correct: "14" },
-    { id: "p3q4", q: "∛125 = ?", hint: "5 × 5 × 5 = 125", options: ["3", "4", "5", "6"], correct: "5" },
+    { id: "p3q1", q: "$\\sqrt{144} = \\boxed{?}$", hint: "¿Qué número multiplicado por sí mismo da 144?", options: ["11", "12", "13", "14"], correct: "12" },
+    { id: "p3q2", q: "$\\sqrt[3]{27} = \\boxed{?}$", hint: "¿Qué número al cubo da 27?", options: ["2", "3", "4", "9"], correct: "3" },
+    { id: "p3q3", q: "$\\sqrt{196} = \\boxed{?}$", hint: "14 × 14 = 196", options: ["13", "16", "14", "15"], correct: "14" },
+    { id: "p3q4", q: "$\\sqrt[3]{125} = \\boxed{?}$", hint: "5 × 5 × 5 = 125", options: ["3", "4", "5", "6"], correct: "5" },
 ]
+
 
 const SquareVisual = ({ side }: { side: number }) => {
     const cells = Array.from({ length: side * side })
@@ -180,11 +207,12 @@ const SquareVisual = ({ side }: { side: number }) => {
 // ─────────────────────────────────────────────
 
 const PILL4_QS = [
-    { id: "p4q1", q: "log₂ 8 = ?", hint: "¿A qué potencia debes elevar 2 para obtener 8? (2³=8)", options: ["2", "3", "4", "6"], correct: "3" },
-    { id: "p4q2", q: "log₃ 81 = ?", hint: "3⁴ = 81", options: ["3", "4", "9", "27"], correct: "4" },
-    { id: "p4q3", q: "log₅ 125 = ?", hint: "5³ = 125", options: ["2", "3", "4", "5"], correct: "3" },
-    { id: "p4q4", q: "log₁₀ 1000 = ?", hint: "10³ = 1000", options: ["2", "3", "4", "100"], correct: "3" },
+    { id: "p4q1", q: "$\\log_2 8 = \\boxed{?}$", hint: "¿A qué potencia debes elevar 2 para obtener 8? (2³=8)", options: ["2", "3", "4", "6"], correct: "3" },
+    { id: "p4q2", q: "$\\log_3 81 = \\boxed{?}$", hint: "3⁴ = 81", options: ["3", "4", "9", "27"], correct: "4" },
+    { id: "p4q3", q: "$\\log_5 125 = \\boxed{?}$", hint: "5³ = 125", options: ["2", "3", "4", "5"], correct: "3" },
+    { id: "p4q4", q: "$\\log_{10} 1000 = \\boxed{?}$", hint: "10³ = 1000", options: ["2", "3", "4", "100"], correct: "3" },
 ]
+
 
 const BacteriaTable = () => {
     const rows = [0, 1, 2, 3, 4, 5, 6]
@@ -237,13 +265,14 @@ const BacteriaTable = () => {
 
 interface MatchPair { id: number; left: string; right: string }
 const MATCH_PAIRS: MatchPair[] = [
-    { id: 1, left: "2³ = 8", right: "log₂ 8 = 3" },
-    { id: 2, left: "3² = 9", right: "√9 = 3" },
-    { id: 3, left: "5³ = 125", right: "∛125 = 5" },
-    { id: 4, left: "10² = 100", right: "log₁₀ 100 = 2" },
-    { id: 5, left: "4² = 16", right: "√16 = 4" },
-    { id: 6, left: "2⁴ = 16", right: "log₂ 16 = 4" },
+    { id: 1, left: "$2^3 = 8$", right: "$\\log_2 8 = 3$" },
+    { id: 2, left: "$3^2 = 9$", right: "$\\sqrt{9} = 3$" },
+    { id: 3, left: "$5^3 = 125$", right: "$\\sqrt[3]{125} = 5$" },
+    { id: 4, left: "$10^2 = 100$", right: "$\\log_{10} 100 = 2$" },
+    { id: 5, left: "$4^2 = 16$", right: "$\\sqrt{16} = 4$" },
+    { id: 6, left: "$2^4 = 16$", right: "$\\log_2 16 = 4$" },
 ]
+
 
 const MatchingGame = ({ onComplete }: { onComplete: () => void }) => {
     const [left, setLeft] = React.useState<number | null>(null)
@@ -286,7 +315,8 @@ const MatchingGame = ({ onComplete }: { onComplete: () => void }) => {
                                     left === p.id ? "bg-violet-100 border-violet-500 text-violet-800 ring-2 ring-violet-300 scale-105" :
                                         "bg-white border-slate-200 text-slate-700 hover:border-violet-300 hover:scale-102"
                             )}
-                        >{p.left}</button>
+                        ><MathText text={p.left} /></button>
+
                     ))}
                 </div>
                 <div className="space-y-2">
@@ -299,7 +329,8 @@ const MatchingGame = ({ onComplete }: { onComplete: () => void }) => {
                                     right === p.id ? (wrong ? "bg-rose-100 border-rose-400 text-rose-700" : "bg-violet-100 border-violet-500") :
                                         "bg-white border-slate-200 text-slate-700 hover:border-violet-300"
                             )}
-                        >{p.right}</button>
+                        ><MathText text={p.right} /></button>
+
                     ))}
                 </div>
             </div>
@@ -314,12 +345,13 @@ const MatchingGame = ({ onComplete }: { onComplete: () => void }) => {
 const PILL6_QS = [
     {
         id: "p6q1",
-        context: "🔊 El nivel de sonido en decibelios se calcula con L = 10 × log₁₀(I/I₀). Si una bocina tiene una intensidad 1000 veces mayor que el umbral, ¿cuántos decibeles tiene?",
-        q: "L = 10 × log₁₀(1000) = ?",
-        hint: "log₁₀(1000) = 3, entonces L = 10 × 3",
+        context: "🔊 El nivel de sonido en decibelios se calcula con $L = 10 \\times \\log_{10}(I/I_0)$. Si una bocina tiene una intensidad 1000 veces mayor que el umbral, ¿cuántos decibeles tiene?",
+        q: "$L = 10 \\times \\log_{10}(1000) = \\boxed{?}$",
+        hint: "$\\log_{10}(1000) = 3$, entonces $L = 10 \\times 3$",
         options: ["10 dB", "20 dB", "30 dB", "100 dB"],
         correct: "30 dB"
     },
+
     {
         id: "p6q2",
         context: "🌍 La escala de Richter mide la magnitud de terremotos con logaritmos base 10. Un sismo de magnitud 6 libera 10 veces más energía que uno de magnitud 5.",
@@ -329,21 +361,14 @@ const PILL6_QS = [
         correct: "100 veces"
     },
     {
-        id: "p6q3",
-        context: "🧪 La escala de pH mide la acidez con pH = -log₁₀[H⁺]. El agua pura tiene pH = 7 ([H⁺] = 10⁻⁷ mol/L).",
-        q: "Si [H⁺] = 10⁻⁴ mol/L, ¿cuál es el pH?",
-        hint: "pH = -log₁₀(10⁻⁴) = 4",
-        options: ["2", "4", "7", "14"],
-        correct: "4"
-    },
-    {
         id: "p6q4",
-        context: "📱 Una cuenta de TikTok empieza con 100 seguidores y se triplica cada mes: f(t) = 100 × 3^t.",
+        context: "📱 Una cuenta de TikTok empieza con 100 seguidores y se triplica cada mes: $f(t) = 100 \\times 3^t$.",
         q: "¿Cuántos meses tarda en superar 2700 seguidores?",
-        hint: "100 × 3^t > 2700 → 3^t > 27 → t > 3",
+        hint: "$100 \\times 3^t > 2700 \\to 3^t > 27 \\to t > 3$",
         options: ["2 meses", "3 meses", "4 meses", "27 meses"],
         correct: "3 meses"
     },
+
 ]
 
 // ─────────────────────────────────────────────
@@ -395,14 +420,19 @@ const QASection = ({
                 return (
                     <div key={q.id} className="bg-white dark:bg-zinc-900 rounded-3xl border border-slate-200 dark:border-zinc-800 shadow-md p-6 space-y-4">
                         {q.context && (
-                            <div className="bg-slate-50 dark:bg-zinc-800 rounded-2xl p-4 text-slate-600 dark:text-zinc-300 text-sm leading-relaxed">
-                                {q.context}
+                            <div className="bg-slate-50 dark:bg-zinc-800 rounded-2xl p-4 text-slate-600 dark:text-zinc-300 text-base leading-relaxed">
+                                <MathText text={q.context} />
                             </div>
                         )}
-                        <p className="font-bold text-slate-800 dark:text-zinc-100 text-lg">{q.q}</p>
+                        <p className="font-bold text-slate-800 dark:text-zinc-100 text-2xl">
+                            <MathText text={q.q} />
+                        </p>
                         {q.hint && submitted && !ans?.correct && (
-                            <p className="text-sm text-amber-600 bg-amber-50 px-4 py-2 rounded-xl">💡 Pista: {q.hint}</p>
+                            <div className="text-sm text-amber-600 bg-amber-50 px-4 py-2 rounded-xl">
+                                💡 Pista: <MathText text={q.hint} />
+                            </div>
                         )}
+
                         <div className="flex flex-wrap gap-3">
                             {q.options.map(opt => (
                                 <OptionButton
@@ -593,16 +623,32 @@ export default function RutaTriadaPage() {
         { label: "Ruta: La Tríada Aritmética" },
     ]
 
-    const { student, login, logout, loading } = useStudent()
-    const [pills, setPills] = React.useState<PillState[]>(() => buildInitialState())
-    const [matchDone, setMatchDone] = React.useState<boolean>(() => {
-        const s = pills[4]
-        return s?.status === "complete"
-    })
+    const { student, login, logout, loading: studentLoading } = useStudent()
+    const [pills, setPills] = React.useState<PillState[]>(() => PILL_META.map((_, i) => ({
+        status: (i === 0 ? "active" : "locked") as PillStatus,
+        answers: {}
+    })))
+    const [matchDone, setMatchDone] = React.useState(false)
+    const [mounted, setMounted] = React.useState(false)
 
     React.useEffect(() => {
+        setMounted(true)
+        try {
+            const saved = localStorage.getItem(STORAGE_KEY)
+            if (saved) {
+                const parsed = JSON.parse(saved)
+                setPills(parsed)
+                if (parsed[4]?.status === "complete") setMatchDone(true)
+            }
+        } catch (e) {
+            console.error("Error loading progress", e)
+        }
+    }, [])
+
+    React.useEffect(() => {
+        if (!mounted) return
         try { localStorage.setItem(STORAGE_KEY, JSON.stringify(pills)) } catch { /* ignore */ }
-    }, [pills])
+    }, [pills, mounted])
 
     const handleAnswer = (pillIdx: number, qId: string, value: string, correct: boolean) => {
         if (student) {
@@ -701,7 +747,7 @@ export default function RutaTriadaPage() {
                 icon={<Star className="h-10 w-10 text-violet-600" />}
                 className="animate-in fade-in duration-700"
             >
-                {loading ? (
+                {(!mounted || studentLoading) ? (
                     <div className="flex justify-center items-center py-20">
                         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-violet-600"></div>
                     </div>

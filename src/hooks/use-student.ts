@@ -21,6 +21,7 @@ export function useStudent() {
         console.error("Failed to parse student data", e);
       }
     }
+    console.log("useStudent: Loading finished");
     setLoading(false);
   }, []);
 
