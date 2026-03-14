@@ -3,6 +3,17 @@
 import React, { useState } from 'react'
 import { Play, RotateCcw } from 'lucide-react'
 import { cn } from "@/lib/utils"
+import 'katex/dist/katex.min.css'
+import katex from 'katex'
+import 'katex/dist/katex.min.css'
+
+function Math({ math, block }: { math: string; block?: boolean }) {
+    const html = katex.renderToString(math, {
+        throwOnError: false,
+        displayMode: block
+    })
+    return <span dangerouslySetInnerHTML={{ __html: html }} />
+}
 
 export function LogarithmConceptVisual() {
     const [step, setStep] = useState(0)
@@ -26,23 +37,18 @@ export function LogarithmConceptVisual() {
                 <div className="lg:col-span-3 relative w-full overflow-visible min-h-[300px]">
                     <svg
                         viewBox="0 0 600 300"
-                        className="w-full h-full overflow-visible"
+                        className="w-full h-full overflow-visible pointer-events-none"
                     >
                         {/* Step 0: Show logarithmic notation */}
                         {step === 0 && (
                             <g className="animate-in fade-in zoom-in duration-500">
-                                <text
-                                    x={300}
-                                    y={150}
-                                    textAnchor="middle"
-                                    className="text-6xl font-black fill-blue-600 dark:fill-blue-400"
-                                    style={{ fontFamily: "'Quicksand', sans-serif" }}
-                                >
-                                    log<tspan className="text-3xl" dy="15">{base}</tspan>
-                                    <tspan dy="-15" dx="10">{argument}</tspan>
-                                    <tspan dx="20" className="fill-slate-400">=</tspan>
-                                    <tspan dx="20" className="text-7xl fill-orange-500">?</tspan>
-                                </text>
+                                <foreignObject x="0" y="50" width="600" height="200">
+                                    <div className="flex items-center justify-center h-full w-full">
+                                        <div className="text-6xl text-blue-600 dark:text-blue-400 font-black">
+                                            <Math math={`\\log_{${base}} ${argument} = ?`} />
+                                        </div>
+                                    </div>
+                                </foreignObject>
                             </g>
                         )}
 
@@ -112,24 +118,13 @@ export function LogarithmConceptVisual() {
                         {/* Step 3: Result */}
                         {step === 3 && (
                             <g className="animate-in fade-in slide-in-from-bottom-8 duration-700">
-                                <text
-                                    x={300}
-                                    y={120}
-                                    textAnchor="middle"
-                                    className="text-4xl font-bold fill-slate-600 dark:fill-zinc-400"
-                                    style={{ fontFamily: "'Quicksand', sans-serif" }}
-                                >
-                                    ¡Llegamos al 8 en 3 pasos!
-                                </text>
-                                <text
-                                    x={300}
-                                    y={200}
-                                    textAnchor="middle"
-                                    className="text-7xl font-black fill-orange-600 dark:fill-orange-400 underline underline-offset-8 decoration-blue-500/30"
-                                    style={{ fontFamily: "'Quicksand', sans-serif" }}
-                                >
-                                    log<tspan className="text-4xl" dy="15">2</tspan><tspan dy="-15" dx="10">8</tspan> = 3
-                                </text>
+                                <foreignObject x="0" y="100" width="600" height="200">
+                                    <div className="flex items-center justify-center h-full w-full">
+                                        <div className="text-7xl text-orange-600 dark:text-orange-400 font-black underline underline-offset-8 decoration-blue-500/30">
+                                            <Math math={`\\log_{${base}} ${argument} = ${result}`} />
+                                        </div>
+                                    </div>
+                                </foreignObject>
                             </g>
                         )}
                     </svg>
@@ -149,14 +144,20 @@ export function LogarithmConceptVisual() {
 
             {/* Controles y Mensaje */}
             <div className="flex flex-col items-center gap-4">
-                <p className="text-lg text-slate-600 dark:text-zinc-400 font-medium text-center max-w-2xl px-4">
-                    {step === 0 && `¿A qué exponente debemos elevar el ${base} para obtener ${argument}?`}
-                    {step === 1 && `Buscamos cuántas veces debemos multiplicar el ${base} por sí mismo.`}
-                    {step === 2 && `Multiplicamos: 2 (1 paso), 2×2=4 (2 pasos), 4×2=8 (3 pasos).`}
-                    {step === 3 && `Como necesitamos 3 pasos para llegar al ${argument}, el resultado es 3.`}
-                </p>
+                <div className="text-lg text-slate-600 dark:text-zinc-400 font-medium text-center max-w-2xl px-4 min-h-[4rem] flex flex-col justify-center">
+                    {step === 0 && (
+                        <>
+                            <p>¿A qué exponente debemos elevar el {base} para obtener {argument}?</p>
+                            <p className="text-blue-600 dark:text-blue-400 font-bold">¿Cuántos pasos multiplicativos debe dar el {base} para llegar al {argument}?</p>
+                        </>
+                    )}
+                    {step === 1 && <p>Buscamos cuántas veces debemos multiplicar el {base} por sí mismo.</p>}
+                    {step === 2 && <p>Multiplicamos: 2 (1 paso), 2×2=4 (2 pasos), 4×2=8 (3 pasos).</p>}
+                    {step === 3 && <p>Como necesitamos 3 pasos para llegar al {argument}, el resultado es 3.</p>}
+                </div>
                 <button
-                    onClick={handleNext}
+                    type="button"
+                    onClick={() => handleNext()}
                     className={cn(
                         "flex items-center gap-2 px-8 py-3 rounded-full font-bold transition-all active:scale-95 shadow-lg",
                         step === 3
@@ -171,6 +172,7 @@ export function LogarithmConceptVisual() {
                     )}
                 </button>
             </div>
+
         </div>
     )
 }

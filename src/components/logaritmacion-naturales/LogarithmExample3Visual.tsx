@@ -3,6 +3,16 @@
 import React, { useState } from 'react'
 import { Play, RotateCcw } from 'lucide-react'
 import { cn } from "@/lib/utils"
+import katex from 'katex'
+import 'katex/dist/katex.min.css'
+
+function Math({ math, block }: { math: string; block?: boolean }) {
+    const html = katex.renderToString(math, {
+        throwOnError: false,
+        displayMode: block
+    })
+    return <span dangerouslySetInnerHTML={{ __html: html }} />
+}
 
 export function LogarithmExample3Visual() {
     const [step, setStep] = useState(0)
@@ -24,9 +34,13 @@ export function LogarithmExample3Visual() {
                 <div className="flex-1 w-full min-h-[250px] flex items-center justify-center bg-white dark:bg-zinc-900 rounded-2xl p-4 shadow-inner relative overflow-hidden">
                     <svg viewBox="0 0 400 200" className="w-full h-full font-quicksand">
                         {step === 0 && (
-                            <text x="200" y="100" textAnchor="middle" className="text-5xl font-black fill-orange-600 dark:fill-orange-400 animate-in fade-in zoom-in">
-                                log<tspan className="text-2xl" dy="10">5</tspan><tspan dy="-10" dx="5">125</tspan>
-                            </text>
+                            <foreignObject x="0" y="50" width="400" height="100">
+                                <div className="flex items-center justify-center h-full w-full">
+                                    <div className="text-5xl text-orange-600 dark:text-orange-400 font-black animate-in fade-in zoom-in">
+                                        <Math math={`\\log_{${base}} ${argument}`} />
+                                    </div>
+                                </div>
+                            </foreignObject>
                         )}
                         
                         {(step >= 1 && step <= 2) && (
@@ -76,7 +90,9 @@ export function LogarithmExample3Visual() {
                         {step === 0 && "¿Cuántas veces multiplicamos el 5 para llegar a 125?"}
                         {step === 1 && "Dos veces: 5 × 5 = 25. ¡Todavía falta!"}
                         {step === 2 && "Tres veces: 25 × 5 = 125. ¡Llegamos!"}
-                        {step === 3 && "Como multiplicamos el 5 un total de 3 veces, log₅(125) = 3."}
+                        {step === 3 && (
+                            <span>Como multiplicamos el 5 un total de 3 veces, <Math math={`\\log_{${base}} ${argument} = ${result}`} />.</span>
+                        )}
                     </p>
                     <button 
                         onClick={handleNext}

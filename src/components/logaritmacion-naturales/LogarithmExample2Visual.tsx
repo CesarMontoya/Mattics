@@ -3,6 +3,16 @@
 import React, { useState } from 'react'
 import { Play, RotateCcw } from 'lucide-react'
 import { cn } from "@/lib/utils"
+import katex from 'katex'
+import 'katex/dist/katex.min.css'
+
+function Math({ math, block }: { math: string; block?: boolean }) {
+    const html = katex.renderToString(math, {
+        throwOnError: false,
+        displayMode: block
+    })
+    return <span dangerouslySetInnerHTML={{ __html: html }} />
+}
 
 export function LogarithmExample2Visual() {
     const [step, setStep] = useState(0)
@@ -24,9 +34,13 @@ export function LogarithmExample2Visual() {
                 <div className="flex-1 w-full min-h-[250px] flex items-center justify-center bg-white dark:bg-zinc-900 rounded-2xl p-4 shadow-inner relative overflow-hidden">
                     <svg viewBox="0 0 400 200" className="w-full h-full font-quicksand">
                         {step === 0 && (
-                            <text x="200" y="100" textAnchor="middle" className="text-5xl font-black fill-purple-600 dark:fill-purple-400 animate-in fade-in zoom-in">
-                                log<tspan className="text-2xl" dy="10">2</tspan><tspan dy="-10" dx="5">16</tspan>
-                            </text>
+                            <foreignObject x="0" y="50" width="400" height="100">
+                                <div className="flex items-center justify-center h-full w-full">
+                                    <div className="text-5xl text-purple-600 dark:text-purple-400 font-black animate-in fade-in zoom-in">
+                                        <Math math={`\\log_{${base}} ${argument}`} />
+                                    </div>
+                                </div>
+                            </foreignObject>
                         )}
                         
                         {(step >= 1 && step <= 3) && (
@@ -69,11 +83,13 @@ export function LogarithmExample2Visual() {
                     </div>
                     <h4 className="text-2xl font-bold text-slate-800 dark:text-zinc-200">Logaritmo en base 2 de 16</h4>
                     <p className="text-slate-600 dark:text-zinc-400 leading-relaxed h-20">
-                        {step === 0 && "Calcularemos log₂(16). ¿Cuántos 2 necesitamos multiplicar para llegar al 16?"}
-                        {step === 1 && "Paso 1: Tenemos 2."}
-                        {step === 2 && "Paso 2: 2 × 2 = 4."}
-                        {step === 3 && "Paso 3: 4 × 2 = 8."}
-                        {step === 4 && "Paso 4: 8 × 2 = 16. ¡Llegamos en 4 pasos!"}
+                        {step === 0 && (
+                            <span>Calcularemos <Math math={`\\log_{${base}} ${argument}`} />. ¿Cuántos {base} necesitamos multiplicar para llegar al {argument}?</span>
+                        )}
+                        {step === 1 && `Paso 1: Tenemos ${base}.`}
+                        {step === 2 && `Paso 2: ${base} × ${base} = 4.`}
+                        {step === 3 && `Paso 3: 4 × ${base} = 8.`}
+                        {step === 4 && `Paso 4: 8 × ${base} = ${argument}. ¡Llegamos en 4 pasos!`}
                     </p>
                     <button 
                         onClick={handleNext}

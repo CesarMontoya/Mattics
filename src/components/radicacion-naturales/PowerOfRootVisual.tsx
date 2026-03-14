@@ -1,17 +1,18 @@
 "use client"
 
 import React, { useState } from 'react'
-import { Play, RotateCcw } from 'lucide-react'
+import { Play, RotateCcw, ArrowDown } from 'lucide-react'
 import { cn } from "@/lib/utils"
+import { Math } from "@/components/ui/math"
 
 export function PowerOfRootVisual() {
     const [activeExample, setActiveExample] = useState<1 | 2>(1)
     const [step, setStep] = useState(0)
 
     // Example 1: (√4)² = 4
-    const ex1 = { radicand: 4, rootIndex: 2, power: 2, root: 2, result: 4 }
+    const ex1 = { radicand: 4, rootIndex: 2, power: 2, newExponent: 1, result: 4 }
     // Example 2: (³√8)³ = 8
-    const ex2 = { radicand: 8, rootIndex: 3, power: 3, root: 2, result: 8 }
+    const ex2 = { radicand: 8, rootIndex: 3, power: 3, newExponent: 1, result: 8 }
     
     const ex = activeExample === 1 ? ex1 : ex2
 
@@ -57,148 +58,84 @@ export function PowerOfRootVisual() {
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 items-center">
-                {/* Visualizador SVG */}
-                <div className="lg:col-span-3 relative w-full overflow-visible min-h-[280px]">
-                    <svg
-                        viewBox="0 0 600 280"
-                        className="w-full h-full overflow-visible"
-                    >
-                        {/* Step 0: Show power of root */}
-                        {step === 0 && (
-                            <g className="animate-in fade-in duration-500">
-                                <text x={110} y={135} textAnchor="end" className="text-5xl font-black fill-purple-600 dark:fill-purple-400" style={{ fontFamily: "'Quicksand', sans-serif" }}>
-                                    (
-                                </text>
-                                <path
-                                    d="M 120 140 L 135 160 L 150 90 L 280 90"
-                                    className="stroke-purple-600 dark:stroke-purple-400 fill-none"
-                                    strokeWidth={4}
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                />
-                                {ex.rootIndex === 3 && (
-                                    <text x={110} y={110} textAnchor="middle" className="text-2xl font-black fill-purple-600 dark:fill-purple-400" style={{ fontFamily: "'Quicksand', sans-serif" }}>
-                                        {ex.rootIndex}
-                                    </text>
-                                )}
-                                <text x={215} y={135} textAnchor="middle" className="text-5xl font-black fill-purple-600 dark:fill-purple-400" style={{ fontFamily: "'Quicksand', sans-serif" }}>
-                                    {ex.radicand}
-                                </text>
-                                <text x={290} y={135} textAnchor="start" className="text-5xl font-black fill-purple-600 dark:fill-purple-400" style={{ fontFamily: "'Quicksand', sans-serif" }}>
-                                    )
-                                    <tspan className="text-3xl" dy="-20" dx="3">{ex.power}</tspan>
-                                </text>
-                            </g>
-                        )}
+                {/* Visualizador */}
+                <div className="lg:col-span-3 relative w-full min-h-[300px] flex flex-col items-center justify-start gap-4 py-4">
+                    {/* Step 0: Show power of root */}
+                    {step >= 0 && (
+                        <div className="animate-in fade-in slide-in-from-top-4 duration-500 flex justify-center items-center w-full">
+                            <div className="text-5xl md:text-6xl text-purple-600 dark:text-purple-400 font-black">
+                                <Math math={`(\\sqrt${ex.rootIndex > 2 ? `[${ex.rootIndex}]` : ''}{${ex.radicand}})^{${ex.power}}`} />
+                            </div>
+                        </div>
+                    )}
 
-                        {/* Step 1: Show root calculation */}
-                        {step === 1 && (
-                            <g className="animate-in fade-in duration-700">
-                                <text x={300} y={110} textAnchor="middle" className="text-3xl font-bold fill-slate-600 dark:fill-zinc-400" style={{ fontFamily: "'Quicksand', sans-serif" }}>
-                                    Primero calculamos la raíz:
-                                </text>
-                                <path
-                                    d="M 200 175 L 215 195 L 230 125 L 360 125"
-                                    className="stroke-purple-600 dark:stroke-purple-400 fill-none"
-                                    strokeWidth={3}
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                />
-                                {ex.rootIndex === 3 && (
-                                    <text x={190} y={145} textAnchor="middle" className="text-xl font-black fill-purple-600 dark:fill-purple-400" style={{ fontFamily: "'Quicksand', sans-serif" }}>
-                                        {ex.rootIndex}
-                                    </text>
-                                )}
-                                <text x={295} y={170} textAnchor="middle" className="text-4xl font-black fill-purple-600 dark:fill-purple-400" style={{ fontFamily: "'Quicksand', sans-serif" }}>
-                                    {ex.radicand}
-                                </text>
-                                <text x={390} y={170} textAnchor="start" className="text-5xl font-black fill-purple-600 dark:fill-purple-400" style={{ fontFamily: "'Quicksand', sans-serif" }}>
-                                    = {ex.root}
-                                </text>
-                            </g>
-                        )}
+                    {/* Step 1: Show root calculation via division */}
+                    {step >= 1 && (
+                        <>
+                            <div className="text-slate-300 dark:text-zinc-600 animate-in fade-in zoom-in duration-300">
+                                <ArrowDown className="w-8 h-8" />
+                            </div>
+                            <div className="animate-in fade-in slide-in-from-top-4 duration-500 flex flex-col justify-center items-center w-full gap-2 px-6 py-4 bg-purple-50 dark:bg-purple-900/20 rounded-2xl border-2 border-purple-200 dark:border-purple-800 text-purple-600 dark:text-purple-400 font-bold">
+                                <div className="text-xl font-bold text-slate-600 dark:text-zinc-400 text-center">
+                                    Dividimos el exponente<br />entre el índice:
+                                </div>
+                                <div className="text-4xl md:text-5xl font-black mt-2">
+                                    <Math math={`${ex.power} \\div ${ex.rootIndex} = ${ex.newExponent}`} />
+                                </div>
+                            </div>
+                        </>
+                    )}
 
-                        {/* Step 2: Show power calculation */}
-                        {step === 2 && (
-                            <g className="animate-in fade-in duration-700">
-                                <text x={300} y={100} textAnchor="middle" className="text-3xl font-bold fill-slate-600 dark:fill-zinc-400" style={{ fontFamily: "'Quicksand', sans-serif" }}>
-                                    Luego elevamos al exponente:
-                                </text>
-                                <text x={300} y={155} textAnchor="middle" className="text-6xl font-black fill-purple-600 dark:fill-purple-400" style={{ fontFamily: "'Quicksand', sans-serif" }}>
-                                    {ex.root}
-                                    <tspan className="text-4xl" dy="-25" dx="5">{ex.power}</tspan>
-                                </text>
-                                <text
-                                    x={300}
-                                    y={210}
-                                    textAnchor="middle"
-                                    className="text-2xl font-semibold fill-slate-500 dark:fill-zinc-500"
-                                    style={{ fontFamily: "'Inter', sans-serif" }}
-                                >
-                                    {ex.root} × {ex.root}{ex.power === 3 ? ` × ${ex.root}` : ''} = {ex.result}
-                                </text>
-                            </g>
-                        )}
+                    {/* Step 2: Show simplified power */}
+                    {step >= 2 && (
+                        <>
+                            <div className="text-slate-300 dark:text-zinc-600 animate-in fade-in zoom-in duration-300">
+                                <ArrowDown className="w-8 h-8" />
+                            </div>
+                            <div className="animate-in fade-in slide-in-from-top-4 duration-500 flex flex-col justify-center items-center w-full">
+                                <div className="text-xl font-bold text-slate-600 dark:text-zinc-400 text-center mb-2">
+                                    Nos queda el radicando elevado a {ex.newExponent}:
+                                </div>
+                                <div className="text-6xl md:text-7xl text-purple-600 dark:text-purple-400 font-black flex items-start">
+                                    <Math math={`${ex.radicand}^{${ex.newExponent}}`} />
+                                </div>
+                            </div>
+                        </>
+                    )}
 
-                        {/* Step 3: Show final simplification */}
-                        {step === 3 && (
-                            <g className="animate-in fade-in duration-700">
-                                <text x={100} y={125} textAnchor="end" className="text-4xl font-black fill-purple-600 dark:fill-purple-400" style={{ fontFamily: "'Quicksand', sans-serif" }}>
-                                    (
-                                </text>
-                                <path
-                                    d="M 110 135 L 125 155 L 140 85 L 240 85"
-                                    className="stroke-purple-600 dark:stroke-purple-400 fill-none"
-                                    strokeWidth={3}
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                />
-                                {ex.rootIndex === 3 && (
-                                    <text x={100} y={105} textAnchor="middle" className="text-xl font-black fill-purple-600 dark:fill-purple-400" style={{ fontFamily: "'Quicksand', sans-serif" }}>
-                                        {ex.rootIndex}
-                                    </text>
-                                )}
-                                <text x={190} y={125} textAnchor="middle" className="text-3xl font-black fill-purple-600 dark:fill-purple-400" style={{ fontFamily: "'Quicksand', sans-serif" }}>
-                                    {ex.radicand}
-                                </text>
-                                <text x={250} y={125} textAnchor="start" className="text-4xl font-black fill-purple-600 dark:fill-purple-400" style={{ fontFamily: "'Quicksand', sans-serif" }}>
-                                    )
-                                    <tspan className="text-2xl" dy="-15" dx="3">{ex.power}</tspan>
-                                </text>
-                                <text x={315} y={125} textAnchor="start" className="text-5xl font-black fill-purple-600 dark:fill-purple-400" style={{ fontFamily: "'Quicksand', sans-serif" }}>
+                    {/* Step 3: Show final simplification */}
+                    {step >= 3 && (
+                        <>
+                            <div className="text-slate-300 dark:text-zinc-600 animate-in fade-in zoom-in duration-300">
+                                <ArrowDown className="w-8 h-8" />
+                            </div>
+                            <div className="animate-in fade-in slide-in-from-top-4 duration-700 flex flex-col justify-center items-center w-full">
+                                <div className="text-5xl md:text-6xl px-8 py-2 bg-purple-100 dark:bg-purple-900/40 rounded-3xl border-4 border-purple-300 dark:border-purple-700 text-purple-700 dark:text-purple-300 font-black mb-2">
                                     = {ex.result}
-                                </text>
-                                
-                                <text
-                                    x={300}
-                                    y={185}
-                                    textAnchor="middle"
-                                    className="text-xl font-semibold fill-emerald-600 dark:fill-emerald-400"
-                                    style={{ fontFamily: "'Inter', sans-serif" }}
-                                >
+                                </div>
+                                <span className="text-sm md:text-base font-semibold text-emerald-600 dark:text-emerald-400">
                                     ✓ Cuando índice = exponente, se simplifican
-                                </text>
-                            </g>
-                        )}
-                    </svg>
+                                </span>
+                            </div>
+                        </>
+                    )}
                 </div>
-
                 {/* Legend */}
                 <div className="lg:col-span-1 flex flex-col gap-4 p-5 bg-emerald-50 dark:bg-emerald-950/30 rounded-2xl border border-emerald-100 dark:border-emerald-900/50 h-fit">
                     <h4 className="text-xs uppercase tracking-widest font-bold text-emerald-600 dark:text-emerald-400 mb-1">Propiedad</h4>
-                    <p className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">
-                        (<sup>n</sup>√a)<sup>n</sup> = a
-                    </p>
+                    <div className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">
+                        <Math math="(\\sqrt[n]{a})^n = a" />
+                    </div>
                 </div>
             </div>
 
             {/* Controles y Mensaje */}
             <div className="flex flex-col items-center gap-4">
                 <p className="text-lg text-slate-600 dark:text-zinc-400 font-medium text-center">
-                    {step === 0 && `Cuando elevamos una raíz a su mismo índice, obtenemos el radicando`}
-                    {step === 1 && `La raíz ${ex.rootIndex === 3 ? 'cúbica' : 'cuadrada'} de ${ex.radicand} es ${ex.root}`}
-                    {step === 2 && `Ahora elevamos ${ex.root} a la potencia ${ex.power}`}
-                    {step === 3 && `Se simplifican mutuamente: (${ex.rootIndex === 3 ? '³' : ''}√${ex.radicand})${ex.power === 3 ? '³' : '²'} = ${ex.result}`}
+                    {step === 0 && `Cuando elevamos una raíz a una potencia, podemos dividir exponentes`}
+                    {step === 1 && `Dividimos el exponente exterior (${ex.power}) entre el índice de la raíz (${ex.rootIndex})`}
+                    {step === 2 && `El exponente y la raíz se anulan, dejando solo el radicando elevado a 1`}
+                    {step === 3 && <span className="flex items-center justify-center gap-1">Se simplifican mutuamente: <Math math={`(\\sqrt${ex.rootIndex > 2 ? `[${ex.rootIndex}]` : ''}{${ex.radicand}})^{${ex.power}} = ${ex.result}`} /></span>}
                 </p>
                 <button
                     onClick={handleNext}

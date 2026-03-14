@@ -13,7 +13,11 @@ import { RootOfQuotientVisual } from "@/components/radicacion-naturales/RootOfQu
 import { RootOfRootVisual } from "@/components/radicacion-naturales/RootOfRootVisual"
 import { RootOfPowerVisual } from "@/components/radicacion-naturales/RootOfPowerVisual"
 import { PowerOfRootVisual } from "@/components/radicacion-naturales/PowerOfRootVisual"
-import { Calculator, Lightbulb, Info, History } from "lucide-react"
+import { RadicationExercises } from "@/components/radicacion-naturales/RadicationExercises"
+import { PropertyExercises } from "@/components/radicacion-naturales/PropertyExercises"
+import { StepByStepExercises } from "@/components/radicacion-naturales/StepByStepExercises"
+import { Calculator, Lightbulb, Info, History, Dumbbell } from "lucide-react"
+import { Math } from "@/components/ui/math"
 
 export default function RadicacionNaturalesPage() {
     const breadcrumbs = [
@@ -55,24 +59,44 @@ export default function RadicacionNaturalesPage() {
 
                         {/* Ejemplo 1: √16 */}
                         <div className="space-y-4">
-                            <h3 className="text-2xl font-bold text-slate-800 dark:text-zinc-200">Ejemplo 1: La raíz cuadrada</h3>
+                            <h3 className="text-2xl font-bold text-slate-800 dark:text-zinc-200 flex items-center gap-2">
+                                Ejemplo 1: La raíz cuadrada <Math math="\sqrt{16}" />
+                            </h3>
                             <RadicationExample1Visual />
                         </div>
 
                         {/* Ejemplo 2: ⁴√81 */}
                         <div className="space-y-4">
-                            <h3 className="text-2xl font-bold text-slate-800 dark:text-zinc-200">Ejemplo 2: La raíz cuarta</h3>
+                            <h3 className="text-2xl font-bold text-slate-800 dark:text-zinc-200 flex items-center gap-2">
+                                Ejemplo 2: La raíz cuarta <Math math="\sqrt[4]{81}" />
+                            </h3>
                             <RadicationExample2Visual />
                         </div>
 
                         {/* Ejemplo 3: ⁵√32 */}
                         <div className="space-y-4">
-                            <h3 className="text-2xl font-bold text-slate-800 dark:text-zinc-200">Ejemplo 3: La raíz quinta</h3>
+                            <h3 className="text-2xl font-bold text-slate-800 dark:text-zinc-200 flex items-center gap-2">
+                                Ejemplo 3: La raíz quinta <Math math="\sqrt[5]{32}" />
+                            </h3>
                             <RadicationExample3Visual />
                         </div>
                     </section>
 
-                    {/* SECCIÓN 3: PROPIEDADES DE LA RADICACIÓN */}
+                    {/* SECCIÓN 3: EJERCICIOS DE PRÁCTICA */}
+                    <section className="space-y-6">
+                        <div className="flex items-center gap-3">
+                            <div className="bg-purple-100 dark:bg-purple-900/30 p-3 rounded-2xl">
+                                <Dumbbell className="h-8 w-8 text-purple-600 dark:text-purple-400" />
+                            </div>
+                            <h2 className="heading-2 !mb-0">Ejercicios de Práctica</h2>
+                        </div>
+                        <p className="text-xl text-slate-600 dark:text-zinc-400 leading-relaxed font-medium">
+                            Pon a prueba lo que has aprendido. Resuelve las siguientes expresiones radicales eligiendo la respuesta correcta:
+                        </p>
+                        <RadicationExercises />
+                    </section>
+
+                    {/* SECCIÓN 4: PROPIEDADES DE LA RADICACIÓN */}
                     <section className="space-y-6">
                         <h2 className="heading-2">Propiedades de la radicación</h2>
                         <div className="bg-amber-50 dark:bg-amber-950/30 p-6 rounded-2xl border border-amber-100 dark:border-amber-900/50 flex items-start gap-4">
@@ -91,6 +115,7 @@ export default function RadicacionNaturalesPage() {
                                 La raíz de un producto es igual al <b>producto de las raíces</b>:
                             </p>
                             <RootOfProductVisual />
+                            <StepByStepExercises propertyType="product" />
                         </div>
 
                         {/* Propiedad 2: Raíz de un cociente */}
@@ -102,6 +127,7 @@ export default function RadicacionNaturalesPage() {
                                 La raíz de un cociente es igual al <b>cociente de las raíces</b>:
                             </p>
                             <RootOfQuotientVisual />
+                            <StepByStepExercises propertyType="quotient" />
                         </div>
 
                         {/* Propiedad 3: Raíz de una raíz */}
@@ -113,6 +139,7 @@ export default function RadicacionNaturalesPage() {
                                 Cuando tenemos raíces anidadas, <b>multiplicamos los índices</b>:
                             </p>
                             <RootOfRootVisual />
+                            <StepByStepExercises propertyType="rootOfRoot" />
                         </div>
 
                         {/* Propiedad 4: Raíz de una potencia */}
@@ -124,6 +151,7 @@ export default function RadicacionNaturalesPage() {
                                 La raíz de una potencia se calcula <b>dividiendo el exponente entre el índice</b>:
                             </p>
                             <RootOfPowerVisual />
+                            <PropertyExercises propertyType="rootOfPower" />
                         </div>
 
                         {/* Propiedad 5: Potencia de una raíz */}
@@ -135,10 +163,11 @@ export default function RadicacionNaturalesPage() {
                                 Cuando una raíz se eleva a su mismo índice, <b>se simplifica al radicando</b>:
                             </p>
                             <PowerOfRootVisual />
+                            <PropertyExercises propertyType="powerOfRoot" />
                         </div>
                     </section>
 
-                    {/* SECCIÓN 4: CURIOSIDAD HISTÓRICA */}
+                    {/* SECCIÓN 5: CURIOSIDAD HISTÓRICA */}
                     <section className="bg-slate-900 text-white p-8 rounded-3xl space-y-4 shadow-2xl overflow-hidden relative">
                         <div className="absolute top-0 right-0 p-4 opacity-10">
                             <History className="h-32 w-32" />
@@ -147,7 +176,7 @@ export default function RadicacionNaturalesPage() {
                             ¿Sabías que...?
                         </h3>
                         <p className="text-slate-300 text-lg leading-relaxed relative z-10">
-                            El símbolo de la raíz cuadrada (√) que usamos hoy en día fue introducido por el matemático alemán <b>Christoph Rudolff</b> en 1525. El símbolo probablemente proviene de una versión estilizada de la letra "r" minúscula, que representaba la palabra latina "radix" (raíz). Antes de esto, los matemáticos tenían que escribir explicaciones largas como "la raíz cuadrada de 16", lo cual hacía los cálculos muy complicados de leer y escribir.
+                            El símbolo de la raíz cuadrada (<Math math="\sqrt{\phantom{x}}" />) que usamos hoy en día fue introducido por el matemático alemán <b>Christoph Rudolff</b> en 1525. El símbolo probablemente proviene de una versión estilizada de la letra "r" minúscula, que representaba la palabra latina "radix" (raíz). Antes de esto, los matemáticos tenían que escribir explicaciones largas como "la raíz cuadrada de 16", lo cual hacía los cálculos muy complicados de leer y escribir.
                         </p>
                     </section>
 

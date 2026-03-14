@@ -3,6 +3,16 @@
 import React, { useState } from 'react'
 import { Anchor, Play, RotateCcw } from 'lucide-react'
 import { cn } from "@/lib/utils"
+import katex from 'katex'
+import 'katex/dist/katex.min.css'
+
+function Math({ math, block }: { math: string; block?: boolean }) {
+    const html = katex.renderToString(math, {
+        throwOnError: false,
+        displayMode: block
+    })
+    return <span dangerouslySetInnerHTML={{ __html: html }} />
+}
 
 export function LogBasePropertyVisual() {
     const [step, setStep] = useState(0)
@@ -18,8 +28,8 @@ export function LogBasePropertyVisual() {
                 {/* Formula Display */}
                 <div className="flex flex-col items-center justify-center py-6 border-b border-slate-100 dark:border-zinc-800 mb-6">
                     <span className="text-xs font-bold text-emerald-500 uppercase tracking-widest mb-2">Fórmula</span>
-                    <div className="text-3xl md:text-4xl font-black text-slate-800 dark:text-zinc-200 flex items-center gap-4">
-                        log<tspan className="text-xl">b</tspan>(b) = 1
+                    <div className="text-3xl md:text-4xl font-black text-slate-800 dark:text-zinc-200">
+                        <Math math="\log_b(b) = 1" block />
                     </div>
                 </div>
 
@@ -31,7 +41,7 @@ export function LogBasePropertyVisual() {
                             <h4 className="font-bold text-slate-700 dark:text-zinc-300">Base 10</h4>
                         </div>
                         <div className="p-4 bg-slate-50 dark:bg-zinc-800/50 rounded-xl font-mono text-sm space-y-2">
-                            <p className="text-emerald-600 dark:text-emerald-400 font-bold">log₁₀(10)</p>
+                            <p className="text-emerald-600 dark:text-emerald-400 font-bold"><Math math="\log_{10}(10)" /></p>
                             <p className="text-slate-400">¿Cuántas veces es 10 para llegar a 10?</p>
                             <p className="text-emerald-600 font-black text-lg">= 1</p>
                         </div>
@@ -44,7 +54,7 @@ export function LogBasePropertyVisual() {
                             <h4 className="font-bold text-slate-700 dark:text-zinc-300">Base 7</h4>
                         </div>
                         <div className="p-4 bg-slate-50 dark:bg-zinc-800/50 rounded-xl font-mono text-sm space-y-2">
-                            <p className="text-emerald-600 dark:text-emerald-400 font-bold">log₇(7)</p>
+                            <p className="text-emerald-600 dark:text-emerald-400 font-bold"><Math math="\log_7(7)" /></p>
                             <p className="text-slate-400">¿Cuántas veces es 7 para llegar a 7?</p>
                             <p className="text-emerald-600 font-black text-lg">= 1</p>
                         </div>

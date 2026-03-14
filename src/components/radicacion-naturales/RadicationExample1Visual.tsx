@@ -3,6 +3,7 @@
 import React, { useState } from 'react'
 import { Play, RotateCcw } from 'lucide-react'
 import { cn } from "@/lib/utils"
+import { Math } from "@/components/ui/math"
 
 export function RadicationExample1Visual() {
     const [step, setStep] = useState(0)
@@ -28,71 +29,68 @@ export function RadicationExample1Visual() {
                         {/* Step 0: Show radical */}
                         {step === 0 && (
                             <g className="animate-in fade-in duration-500">
-                                <path
-                                    d="M 220 140 L 235 160 L 250 90 L 380 90"
-                                    className="stroke-purple-600 dark:stroke-purple-400 fill-none"
-                                    strokeWidth={4}
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                />
-                                <text
-                                    x={315}
-                                    y={135}
-                                    textAnchor="middle"
-                                    className="text-6xl font-black fill-purple-600 dark:fill-purple-400"
-                                    style={{ fontFamily: "'Quicksand', sans-serif" }}
-                                >
-                                    16
-                                </text>
+                                <foreignObject x="0" y="50" width="600" height="150" className="overflow-visible">
+                                    <div className="flex justify-center items-center h-full w-full">
+                                        <div className="text-7xl fill-purple-600 text-purple-600 dark:text-purple-400 font-black">
+                                            <Math math="\sqrt{16}" />
+                                        </div>
+                                    </div>
+                                </foreignObject>
                             </g>
                         )}
 
-                        {/* Step 1: Show question */}
+                        {/* Step 1: Empty boxes */}
                         {step === 1 && (
                             <g className="animate-in fade-in duration-700">
-                                <text
-                                    x={300}
-                                    y={120}
-                                    textAnchor="middle"
-                                    className="text-3xl font-bold fill-slate-600 dark:fill-zinc-400"
-                                    style={{ fontFamily: "'Quicksand', sans-serif" }}
-                                >
-                                    ¿Qué número multiplicado
-                                </text>
-                                <text
-                                    x={300}
-                                    y={165}
-                                    textAnchor="middle"
-                                    className="text-3xl font-bold fill-slate-600 dark:fill-zinc-400"
-                                    style={{ fontFamily: "'Quicksand', sans-serif" }}
-                                >
-                                    por sí mismo da 16?
-                                </text>
+                                <foreignObject x="0" y="20" width="600" height="80" className="overflow-visible">
+                                    <div className="flex justify-center items-center h-full w-full">
+                                        <div className="text-4xl fill-purple-600 text-purple-600 dark:text-purple-400 font-black">
+                                            <Math math="\sqrt{16}" />
+                                        </div>
+                                    </div>
+                                </foreignObject>
+                                <foreignObject x="0" y="120" width="600" height="120" className="overflow-visible">
+                                    <div className="flex justify-center items-center h-full w-full gap-4">
+                                        {Array.from({length: 2}).map((_, i) => (
+                                            <React.Fragment key={i}>
+                                                <div className="w-16 h-16 border-4 border-dashed border-purple-400 dark:border-purple-600 rounded-xl flex items-center justify-center bg-purple-50 dark:bg-purple-900/20">
+                                                    <span className="text-3xl text-purple-400/50 dark:text-purple-500/50">?</span>
+                                                </div>
+                                                {i < 1 && <span className="text-3xl font-black text-slate-400 dark:text-zinc-500">×</span>}
+                                            </React.Fragment>
+                                        ))}
+                                        <span className="text-4xl font-black text-purple-600 dark:text-purple-400 ml-2">= 16</span>
+                                    </div>
+                                    <div className="text-center mt-2">
+                                        <span className="text-sm font-bold text-slate-500 dark:text-zinc-400 uppercase tracking-wider">2 pasos multiplicativos indica el índice</span>
+                                    </div>
+                                </foreignObject>
                             </g>
                         )}
 
-                        {/* Step 2: Show verification */}
+                        {/* Step 2: Filled boxes */}
                         {step === 2 && (
                             <g className="animate-in fade-in duration-700">
-                                <text
-                                    x={300}
-                                    y={120}
-                                    textAnchor="middle"
-                                    className="text-5xl font-black fill-purple-600 dark:fill-purple-400"
-                                    style={{ fontFamily: "'Quicksand', sans-serif" }}
-                                >
-                                    4 × 4 = 16
-                                </text>
-                                <text
-                                    x={300}
-                                    y={170}
-                                    textAnchor="middle"
-                                    className="text-4xl font-black fill-purple-600 dark:fill-purple-400"
-                                    style={{ fontFamily: "'Quicksand', sans-serif" }}
-                                >
-                                    4<tspan className="text-2xl" dy="-15" dx="5">2</tspan>
-                                    <tspan className="text-4xl" dy="15" dx="10">= 16</tspan>
-                                </text>
+                                <foreignObject x="0" y="20" width="600" height="80" className="overflow-visible">
+                                    <div className="flex justify-center items-center h-full w-full">
+                                        <div className="text-4xl fill-purple-600 text-purple-600 dark:text-purple-400 font-black">
+                                            <Math math="\sqrt{16}" />
+                                        </div>
+                                    </div>
+                                </foreignObject>
+                                <foreignObject x="0" y="120" width="600" height="120" className="overflow-visible">
+                                    <div className="flex justify-center items-center h-full w-full gap-4">
+                                        {Array.from({length: 2}).map((_, i) => (
+                                            <React.Fragment key={i}>
+                                                <div className="w-16 h-16 border-4 border-solid border-purple-600 dark:border-purple-400 rounded-xl flex items-center justify-center bg-purple-100 dark:bg-purple-900/50 shadow-sm animate-in zoom-in slide-in-from-bottom-2 duration-500" style={{ animationDelay: `${i * 150}ms`, animationFillMode: 'both' }}>
+                                                    <span className="text-4xl font-black text-purple-700 dark:text-purple-300">4</span>
+                                                </div>
+                                                {i < 1 && <span className="text-3xl font-black text-slate-600 dark:text-zinc-400">×</span>}
+                                            </React.Fragment>
+                                        ))}
+                                        <span className="text-4xl font-black text-purple-600 dark:text-purple-400 ml-2">= 16</span>
+                                    </div>
+                                </foreignObject>
                             </g>
                         )}
 
@@ -100,31 +98,13 @@ export function RadicationExample1Visual() {
                         {step === 3 && (
                             <g className="animate-in fade-in duration-700">
                                 {/* Result */}
-                                <path
-                                    d="M 150 140 L 165 160 L 180 90 L 280 90"
-                                    className="stroke-purple-600 dark:stroke-purple-400 fill-none"
-                                    strokeWidth={4}
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                />
-                                <text
-                                    x={230}
-                                    y={135}
-                                    textAnchor="middle"
-                                    className="text-5xl font-black fill-purple-600 dark:fill-purple-400"
-                                    style={{ fontFamily: "'Quicksand', sans-serif" }}
-                                >
-                                    16
-                                </text>
-                                <text
-                                    x={320}
-                                    y={135}
-                                    textAnchor="start"
-                                    className="text-5xl font-black fill-purple-600 dark:fill-purple-400"
-                                    style={{ fontFamily: "'Quicksand', sans-serif" }}
-                                >
-                                    = 4
-                                </text>
+                                <foreignObject x="0" y="50" width="400" height="150" className="overflow-visible">
+                                    <div className="flex justify-center items-center h-full w-full pl-12">
+                                        <div className="text-6xl fill-purple-600 text-purple-600 dark:text-purple-400 font-black">
+                                            <Math math="\sqrt{16} = 4" />
+                                        </div>
+                                    </div>
+                                </foreignObject>
                                 
                                 {/* Visual representation: 4x4 square */}
                                 {Array.from({ length: 4 }).map((_, row) =>
@@ -166,11 +146,11 @@ export function RadicationExample1Visual() {
 
             {/* Controles y Mensaje */}
             <div className="flex flex-col items-center gap-4">
-                <p className="text-lg text-slate-600 dark:text-zinc-400 font-medium text-center">
-                    {step === 0 && "La raíz cuadrada (√) es el caso más común de radicación"}
-                    {step === 1 && "Buscamos un número que al cuadrado dé 16"}
-                    {step === 2 && "Comprobamos: 4 al cuadrado es igual a 16"}
-                    {step === 3 && "√16 = 4, representado como un cuadrado de 4×4"}
+                <p className="text-lg text-slate-600 dark:text-zinc-400 font-medium text-center min-h-[60px] flex items-center justify-center">
+                    {step === 0 && <span className="flex items-center justify-center gap-2">La raíz cuadrada (<Math math="\sqrt{\phantom{x}}" />) es el caso más común de radicación</span>}
+                    {step === 1 && "Como el índice es 2 (raíz cuadrada), buscamos un número que multiplicado por sí mismo 2 veces dé 16."}
+                    {step === 2 && "¡El número es 4! Verificamos: 4 × 4 = 16"}
+                    {step === 3 && <span className="flex items-center justify-center gap-2"><Math math="\sqrt{16} = 4" />, representado como un cuadrado de 4×4</span>}
                 </p>
                 <button
                     onClick={handleNext}

@@ -3,6 +3,7 @@
 import React, { useState } from 'react'
 import { Play, RotateCcw } from 'lucide-react'
 import { cn } from "@/lib/utils"
+import { Math } from "@/components/ui/math"
 
 export function RadicationConceptVisual() {
     const [step, setStep] = useState(0)
@@ -31,128 +32,81 @@ export function RadicationConceptVisual() {
                         {/* Step 0: Show radical notation */}
                         {step === 0 && (
                             <g className="animate-in fade-in duration-500">
-                                {/* Radical symbol */}
-                                <path
-                                    d="M 220 150 L 235 170 L 250 100 L 400 100"
-                                    className="stroke-purple-600 dark:stroke-purple-400 fill-none"
-                                    strokeWidth={4}
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                />
-                                {/* Index */}
-                                <text
-                                    x={210}
-                                    y={120}
-                                    textAnchor="middle"
-                                    className="text-3xl font-black fill-purple-600 dark:fill-purple-400"
-                                    style={{ fontFamily: "'Quicksand', sans-serif" }}
-                                >
-                                    {index}
-                                </text>
-                                {/* Radicand */}
-                                <text
-                                    x={325}
-                                    y={145}
-                                    textAnchor="middle"
-                                    className="text-5xl font-black fill-purple-600 dark:fill-purple-400"
-                                    style={{ fontFamily: "'Quicksand', sans-serif" }}
-                                >
-                                    {radicand}
-                                </text>
+                                <foreignObject x="0" y="50" width="600" height="150" className="overflow-visible">
+                                    <div className="flex justify-center items-center h-full w-full">
+                                        <div className="text-7xl fill-purple-600 text-purple-600 dark:text-purple-400 font-black">
+                                            <Math math={`\\sqrt[${index}]{${radicand}}`} />
+                                        </div>
+                                    </div>
+                                </foreignObject>
                             </g>
                         )}
 
-                        {/* Step 1: Show equivalence with power */}
+                        {/* Step 1: Empty boxes */}
                         {step === 1 && (
                             <g className="animate-in fade-in duration-700">
-                                <text
-                                    x={300}
-                                    y={120}
-                                    textAnchor="middle"
-                                    className="text-3xl font-bold fill-slate-600 dark:fill-zinc-400"
-                                    style={{ fontFamily: "'Quicksand', sans-serif" }}
-                                >
-                                    ¿Qué número elevado a {index}
-                                </text>
-                                <text
-                                    x={300}
-                                    y={165}
-                                    textAnchor="middle"
-                                    className="text-3xl font-bold fill-slate-600 dark:fill-zinc-400"
-                                    style={{ fontFamily: "'Quicksand', sans-serif" }}
-                                >
-                                    da como resultado {radicand}?
-                                </text>
+                                <foreignObject x="0" y="20" width="600" height="80" className="overflow-visible">
+                                    <div className="flex justify-center items-center h-full w-full">
+                                        <div className="text-4xl fill-purple-600 text-purple-600 dark:text-purple-400 font-black">
+                                            <Math math={`\\sqrt[${index}]{${radicand}}`} />
+                                        </div>
+                                    </div>
+                                </foreignObject>
+                                <foreignObject x="0" y="120" width="600" height="120" className="overflow-visible">
+                                    <div className="flex justify-center items-center h-full w-full gap-4">
+                                        {Array.from({length: index}).map((_, i) => (
+                                            <React.Fragment key={i}>
+                                                <div className="w-16 h-16 border-4 border-dashed border-purple-400 dark:border-purple-600 rounded-xl flex items-center justify-center bg-purple-50 dark:bg-purple-900/20">
+                                                    <span className="text-3xl text-purple-400/50 dark:text-purple-500/50">?</span>
+                                                </div>
+                                                {i < index - 1 && <span className="text-3xl font-black text-slate-400 dark:text-zinc-500">×</span>}
+                                            </React.Fragment>
+                                        ))}
+                                        <span className="text-4xl font-black text-purple-600 dark:text-purple-400 ml-2">= {radicand}</span>
+                                    </div>
+                                    <div className="text-center mt-2">
+                                        <span className="text-sm font-bold text-slate-500 dark:text-zinc-400 uppercase tracking-wider">{index} pasos multiplicativos indica el índice</span>
+                                    </div>
+                                </foreignObject>
                             </g>
                         )}
 
-                        {/* Step 2: Show verification */}
+                        {/* Step 2: Filled boxes */}
                         {step === 2 && (
                             <g className="animate-in fade-in duration-700">
-                                <text
-                                    x={300}
-                                    y={120}
-                                    textAnchor="middle"
-                                    className="text-4xl font-black fill-purple-600 dark:fill-purple-400"
-                                    style={{ fontFamily: "'Quicksand', sans-serif" }}
-                                >
-                                    {result}
-                                    <tspan className="text-2xl" dy="-15" dx="5">{index}</tspan>
-                                    <tspan className="text-4xl" dy="15" dx="10">= {radicand}</tspan>
-                                </text>
-                                <text
-                                    x={300}
-                                    y={170}
-                                    textAnchor="middle"
-                                    className="text-2xl font-semibold fill-slate-500 dark:fill-zinc-500"
-                                    style={{ fontFamily: "'Inter', sans-serif" }}
-                                >
-                                    {result} × {result} × {result} = {radicand}
-                                </text>
+                                <foreignObject x="0" y="20" width="600" height="80" className="overflow-visible">
+                                    <div className="flex justify-center items-center h-full w-full">
+                                        <div className="text-4xl fill-purple-600 text-purple-600 dark:text-purple-400 font-black">
+                                            <Math math={`\\sqrt[${index}]{${radicand}}`} />
+                                        </div>
+                                    </div>
+                                </foreignObject>
+                                <foreignObject x="0" y="120" width="600" height="120" className="overflow-visible">
+                                    <div className="flex justify-center items-center h-full w-full gap-4">
+                                        {Array.from({length: index}).map((_, i) => (
+                                            <React.Fragment key={i}>
+                                                <div className="w-16 h-16 border-4 border-solid border-purple-600 dark:border-purple-400 rounded-xl flex items-center justify-center bg-purple-100 dark:bg-purple-900/50 shadow-sm animate-in zoom-in slide-in-from-bottom-2 duration-500" style={{ animationDelay: `${i * 150}ms`, animationFillMode: 'both' }}>
+                                                    <span className="text-4xl font-black text-purple-700 dark:text-purple-300">{result}</span>
+                                                </div>
+                                                {i < index - 1 && <span className="text-3xl font-black text-slate-600 dark:text-zinc-400">×</span>}
+                                            </React.Fragment>
+                                        ))}
+                                        <span className="text-4xl font-black text-purple-600 dark:text-purple-400 ml-2">= {radicand}</span>
+                                    </div>
+                                </foreignObject>
                             </g>
                         )}
 
                         {/* Step 3: Show final result */}
                         {step === 3 && (
                             <g className="animate-in fade-in duration-700">
-                                {/* Radical symbol */}
-                                <path
-                                    d="M 180 150 L 195 170 L 210 100 L 310 100"
-                                    className="stroke-purple-600 dark:stroke-purple-400 fill-none"
-                                    strokeWidth={4}
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                />
-                                {/* Index */}
-                                <text
-                                    x={170}
-                                    y={120}
-                                    textAnchor="middle"
-                                    className="text-3xl font-black fill-purple-600 dark:fill-purple-400"
-                                    style={{ fontFamily: "'Quicksand', sans-serif" }}
-                                >
-                                    {index}
-                                </text>
-                                {/* Radicand */}
-                                <text
-                                    x={260}
-                                    y={145}
-                                    textAnchor="middle"
-                                    className="text-4xl font-black fill-purple-600 dark:fill-purple-400"
-                                    style={{ fontFamily: "'Quicksand', sans-serif" }}
-                                >
-                                    {radicand}
-                                </text>
-                                {/* Equals sign and result */}
-                                <text
-                                    x={340}
-                                    y={145}
-                                    textAnchor="middle"
-                                    className="text-5xl font-black fill-purple-600 dark:fill-purple-400"
-                                    style={{ fontFamily: "'Quicksand', sans-serif" }}
-                                >
-                                    = {result}
-                                </text>
+                                <foreignObject x="0" y="50" width="400" height="150" className="overflow-visible">
+                                    <div className="flex justify-center items-center h-full w-full pl-8">
+                                        <div className="text-6xl fill-purple-600 text-purple-600 dark:text-purple-400 font-black">
+                                            <Math math={`\\sqrt[${index}]{${radicand}} = ${result}`} />
+                                        </div>
+                                    </div>
+                                </foreignObject>
                                 
                                 {/* Visual representation: 3x3x3 cube */}
                                 {Array.from({ length: 3 }).map((_, layer) =>
@@ -188,8 +142,8 @@ export function RadicationConceptVisual() {
                     <h4 className="text-xs uppercase tracking-widest font-bold text-purple-600 dark:text-purple-400 mb-1">Paso {step + 1} de 4</h4>
                     <p className="text-sm font-medium text-purple-800 dark:text-purple-300">
                         {step === 0 && "Notación radical"}
-                        {step === 1 && "Pregunta inversa"}
-                        {step === 2 && "Verificación"}
+                        {step === 1 && "Buscar el factor"}
+                        {step === 2 && "Verificar"}
                         {step === 3 && "Resultado final"}
                     </p>
                 </div>
@@ -197,11 +151,11 @@ export function RadicationConceptVisual() {
 
             {/* Controles y Mensaje */}
             <div className="flex flex-col items-center gap-4">
-                <p className="text-lg text-slate-600 dark:text-zinc-400 font-medium text-center">
-                    {step === 0 && `³√${radicand} se lee "raíz cúbica de ${radicand}"`}
-                    {step === 1 && `La radicación es la operación inversa de la potenciación`}
-                    {step === 2 && `Verificamos: ${result}³ = ${result} × ${result} × ${result} = ${radicand}`}
-                    {step === 3 && `Por lo tanto, la raíz cúbica de ${radicand} es ${result}`}
+                <p className="text-lg text-slate-600 dark:text-zinc-400 font-medium text-center min-h-[60px] flex items-center justify-center">
+                    {step === 0 && <span className="flex items-center justify-center gap-2"><Math math={`\\sqrt[3]{${radicand}}`} /> se lee "raíz cúbica de {radicand}"</span>}
+                    {step === 1 && `Como el índice es ${index}, buscamos un número que multiplicado por sí mismo ${index} veces dé ${radicand}.`}
+                    {step === 2 && `¡El número es ${result}! Verificamos: ${result} × ${result} × ${result} = ${radicand}`}
+                    {step === 3 && `Por lo tanto, la raíz de la operación es ${result}`}
                 </p>
                 <button
                     onClick={handleNext}

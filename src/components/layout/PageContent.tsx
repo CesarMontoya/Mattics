@@ -26,7 +26,7 @@ export function PageContent({
             )}
             {...props}
         >
-            <div className="mx-auto w-full max-w-[850px] px-6 md:px-10 lg:px-16">
+            <div className="mx-auto w-full max-w-[1000px] px-6 md:px-10 lg:px-16">
                 <div className="flex flex-col">
                     {/* Header Area (Adjusted for no cover) */}
                     <div className="flex flex-col gap-4 mb-10 mt-10 md:mt-16">

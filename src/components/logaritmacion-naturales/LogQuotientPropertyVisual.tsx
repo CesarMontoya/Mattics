@@ -3,6 +3,16 @@
 import React, { useState } from 'react'
 import { Minus, Play, RotateCcw } from 'lucide-react'
 import { cn } from "@/lib/utils"
+import katex from 'katex'
+import 'katex/dist/katex.min.css'
+
+function Math({ math, block }: { math: string; block?: boolean }) {
+    const html = katex.renderToString(math, {
+        throwOnError: false,
+        displayMode: block
+    })
+    return <span dangerouslySetInnerHTML={{ __html: html }} />
+}
 
 export function LogQuotientPropertyVisual() {
     const [step, setStep] = useState(0)
@@ -18,8 +28,8 @@ export function LogQuotientPropertyVisual() {
                 {/* Formula Display */}
                 <div className="flex flex-col items-center justify-center py-6 border-b border-slate-100 dark:border-zinc-800 mb-6">
                     <span className="text-xs font-bold text-purple-500 uppercase tracking-widest mb-2">Fórmula</span>
-                    <div className="text-3xl md:text-4xl font-black text-slate-800 dark:text-zinc-200 flex items-center gap-4">
-                        log<tspan className="text-xl">b</tspan>(m / n) = log<tspan className="text-xl">b</tspan>m - log<tspan className="text-xl">b</tspan>n
+                    <div className="text-3xl md:text-4xl font-black text-slate-800 dark:text-zinc-200">
+                        <Math math="\log_b(m / n) = \log_b m - \log_b n" block />
                     </div>
                 </div>
 
@@ -31,8 +41,8 @@ export function LogQuotientPropertyVisual() {
                             <h4 className="font-bold text-slate-700 dark:text-zinc-300">Ejemplo con base 2</h4>
                         </div>
                         <div className="p-4 bg-slate-50 dark:bg-zinc-800/50 rounded-xl font-mono text-sm space-y-2">
-                            <p className="text-purple-600 dark:text-purple-400 font-bold">log₂(16 / 4)</p>
-                            <p className="text-slate-400">log₂(16) - log₂(4)</p>
+                            <p className="text-purple-600 dark:text-purple-400 font-bold"><Math math="\log_2(16 / 4)" /></p>
+                            <p className="text-slate-400"><Math math="\log_2(16) - \log_2(4)" /></p>
                             <p className="text-slate-400">4 - 2</p>
                             <p className="text-emerald-600 font-black text-lg">= 2</p>
                         </div>
@@ -45,8 +55,8 @@ export function LogQuotientPropertyVisual() {
                             <h4 className="font-bold text-slate-700 dark:text-zinc-300">Ejemplo con base 5</h4>
                         </div>
                         <div className="p-4 bg-slate-50 dark:bg-zinc-800/50 rounded-xl font-mono text-sm space-y-2">
-                            <p className="text-purple-600 dark:text-purple-400 font-bold">log₅(125 / 25)</p>
-                            <p className="text-slate-400">log₅(125) - log₅(25)</p>
+                            <p className="text-purple-600 dark:text-purple-400 font-bold"><Math math="\log_5(125 / 25)" /></p>
+                            <p className="text-slate-400"><Math math="\log_5(125) - \log_5(25)" /></p>
                             <p className="text-slate-400">3 - 2</p>
                             <p className="text-emerald-600 font-black text-lg">= 1</p>
                         </div>
@@ -57,8 +67,12 @@ export function LogQuotientPropertyVisual() {
             <div className="flex flex-col items-center gap-4">
                 <p className="text-slate-600 dark:text-zinc-400 text-center font-medium max-w-lg">
                     {step === 0 && "El logaritmo de un cociente es igual a la resta del logaritmo del dividendo menos el logaritmo del divisor."}
-                    {step === 1 && "Dividir se convierte en restar exponentes: log₂(4) = 2."}
-                    {step === 2 && "Para la base 5: log₅(5) = 1. Sustraer los pasos es quitarle factores."}
+                    {step === 1 && (
+                        <span>Dividir se convierte en restar exponentes: <Math math="\log_2(4) = 2" />.</span>
+                    )}
+                    {step === 2 && (
+                        <span>Para la base 5: <Math math="\log_5(5) = 1" />. Sustraer los pasos es quitarle factores.</span>
+                    )}
                 </p>
                 <button
                     onClick={handleNext}

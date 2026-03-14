@@ -1,8 +1,9 @@
 "use client"
 
 import React, { useState } from 'react'
-import { Play, RotateCcw } from 'lucide-react'
+import { Play, RotateCcw, ArrowDown } from 'lucide-react'
 import { cn } from "@/lib/utils"
+import { Math } from "@/components/ui/math"
 
 export function RootOfQuotientVisual() {
     const [activeExample, setActiveExample] = useState<1 | 2>(1)
@@ -58,148 +59,69 @@ export function RootOfQuotientVisual() {
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 items-center">
-                {/* Visualizador SVG */}
-                <div className="lg:col-span-3 relative w-full overflow-visible min-h-[280px]">
-                    <svg
-                        viewBox="0 0 600 280"
-                        className="w-full h-full overflow-visible"
-                    >
-                        {/* Step 0: Show original expression */}
-                        {step === 0 && (
-                            <g className="animate-in fade-in duration-500">
-                                <path
-                                    d="M 180 150 L 195 170 L 210 90 L 410 90"
-                                    className="stroke-purple-600 dark:stroke-purple-400 fill-none"
-                                    strokeWidth={4}
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                />
-                                {index === 3 && (
-                                    <text x={170} y={110} textAnchor="middle" className="text-2xl font-black fill-purple-600 dark:fill-purple-400" style={{ fontFamily: "'Quicksand', sans-serif" }}>
-                                        {index}
-                                    </text>
-                                )}
-                                {/* Fraction */}
-                                <text x={310} y={125} textAnchor="middle" className="text-4xl font-black fill-purple-600 dark:fill-purple-400" style={{ fontFamily: "'Quicksand', sans-serif" }}>
-                                    {ex.numerator}
-                                </text>
-                                <line x1={270} y1={135} x2={350} y2={135} className="stroke-purple-600 dark:stroke-purple-400" strokeWidth={3} />
-                                <text x={310} y={165} textAnchor="middle" className="text-4xl font-black fill-purple-600 dark:fill-purple-400" style={{ fontFamily: "'Quicksand', sans-serif" }}>
-                                    {ex.denominator}
-                                </text>
-                            </g>
-                        )}
+                {/* Visualizador */}
+                <div className="lg:col-span-3 relative w-full min-h-[300px] flex flex-col items-center justify-start gap-4 py-4">
+                    {/* Step 0: Show original expression */}
+                    {step >= 0 && (
+                        <div className="animate-in fade-in slide-in-from-top-4 duration-500 flex justify-center items-center w-full">
+                            <div className="text-5xl md:text-6xl text-purple-600 dark:text-purple-400 font-black">
+                                <Math math={`\\sqrt${index === 3 ? '[3]' : ''}{\\frac{${ex.numerator}}{${ex.denominator}}}`} />
+                            </div>
+                        </div>
+                    )}
 
-                        {/* Step 1: Show property application */}
-                        {step === 1 && (
-                            <g className="animate-in fade-in duration-700">
-                                {/* Numerator radical */}
-                                <g>
-                                    <path
-                                        d="M 140 105 L 155 125 L 170 55 L 270 55"
-                                        className="stroke-purple-600 dark:stroke-purple-400 fill-none"
-                                        strokeWidth={3}
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                    />
-                                    {index === 3 && (
-                                        <text x={130} y={75} textAnchor="middle" className="text-xl font-black fill-purple-600 dark:fill-purple-400" style={{ fontFamily: "'Quicksand', sans-serif" }}>
-                                            {index}
-                                        </text>
-                                    )}
-                                    <text x={220} y={95} textAnchor="middle" className="text-3xl font-black fill-purple-600 dark:fill-purple-400" style={{ fontFamily: "'Quicksand', sans-serif" }}>
-                                        {ex.numerator}
-                                    </text>
-                                </g>
-                                
-                                {/* Division line */}
-                                <line x1={140} y1={140} x2={350} y2={140} className="stroke-slate-600 dark:stroke-zinc-400" strokeWidth={3} />
-                                
-                                {/* Denominator radical */}
-                                <g>
-                                    <path
-                                        d="M 180 195 L 195 215 L 210 145 L 310 145"
-                                        className="stroke-purple-600 dark:stroke-purple-400 fill-none"
-                                        strokeWidth={3}
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                    />
-                                    {index === 3 && (
-                                        <text x={170} y={165} textAnchor="middle" className="text-xl font-black fill-purple-600 dark:fill-purple-400" style={{ fontFamily: "'Quicksand', sans-serif" }}>
-                                            {index}
-                                        </text>
-                                    )}
-                                    <text x={260} y={185} textAnchor="middle" className="text-3xl font-black fill-purple-600 dark:fill-purple-400" style={{ fontFamily: "'Quicksand', sans-serif" }}>
-                                        {ex.denominator}
-                                    </text>
-                                </g>
-                            </g>
-                        )}
+                    {/* Step 1: Show property application */}
+                    {step >= 1 && (
+                        <>
+                            <div className="text-slate-300 dark:text-zinc-600 animate-in fade-in zoom-in duration-300">
+                                <ArrowDown className="w-8 h-8" />
+                            </div>
+                            <div className="animate-in fade-in slide-in-from-top-4 duration-500 flex justify-center items-center w-full">
+                                <div className="text-5xl lg:text-6xl text-purple-600 dark:text-purple-400 font-black">
+                                    <Math math={`\\frac{\\sqrt${index === 3 ? '[3]' : ''}{${ex.numerator}}}{\\sqrt${index === 3 ? '[3]' : ''}{${ex.denominator}}}`} />
+                                </div>
+                            </div>
+                        </>
+                    )}
 
-                        {/* Step 2: Show calculation */}
-                        {step === 2 && (
-                            <g className="animate-in fade-in duration-700">
-                                <text x={300} y={110} textAnchor="middle" className="text-5xl font-bold fill-purple-600 dark:fill-purple-400" style={{ fontFamily: "'Quicksand', sans-serif" }}>
-                                    {ex.rootNum}
-                                </text>
-                                <line x1={270} y1={125} x2={330} y2={125} className="stroke-purple-600 dark:stroke-purple-400" strokeWidth={3} />
-                                <text x={300} y={155} textAnchor="middle" className="text-5xl font-bold fill-purple-600 dark:fill-purple-400" style={{ fontFamily: "'Quicksand', sans-serif" }}>
-                                    {ex.rootDen}
-                                </text>
-                                <text
-                                    x={300}
-                                    y={195}
-                                    textAnchor="middle"
-                                    className="text-xl font-semibold fill-slate-500 dark:fill-zinc-500"
-                                    style={{ fontFamily: "'Inter', sans-serif" }}
-                                >
-                                    {index === 3 ? `³√${ex.numerator} = ${ex.rootNum}  y  ³√${ex.denominator} = ${ex.rootDen}` : `√${ex.numerator} = ${ex.rootNum}  y  √${ex.denominator} = ${ex.rootDen}`}
-                                </text>
-                            </g>
-                        )}
+                    {/* Step 2: Show calculation */}
+                    {step >= 2 && (
+                        <>
+                            <div className="text-slate-300 dark:text-zinc-600 animate-in fade-in zoom-in duration-300">
+                                <ArrowDown className="w-8 h-8" />
+                            </div>
+                            <div className="animate-in fade-in slide-in-from-top-4 duration-500 flex flex-col justify-center items-center w-full gap-2">
+                                <div className="text-4xl text-purple-600 dark:text-purple-400 font-bold bg-purple-50 dark:bg-purple-900/20 px-6 py-4 rounded-2xl border-2 border-purple-200 dark:border-purple-800 flex items-center justify-center">
+                                    <Math math={`\\frac{${ex.rootNum}}{${ex.rootDen}}`} />
+                                </div>
+                            </div>
+                        </>
+                    )}
 
-                        {/* Step 3: Show final result */}
-                        {step === 3 && (
-                            <g className="animate-in fade-in duration-700">
-                                <path
-                                    d="M 150 150 L 165 170 L 180 90 L 310 90"
-                                    className="stroke-purple-600 dark:stroke-purple-400 fill-none"
-                                    strokeWidth={4}
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                />
-                                {index === 3 && (
-                                    <text x={140} y={110} textAnchor="middle" className="text-2xl font-black fill-purple-600 dark:fill-purple-400" style={{ fontFamily: "'Quicksand', sans-serif" }}>
-                                        {index}
-                                    </text>
-                                )}
-                                <text x={245} y={135} textAnchor="middle" className="text-4xl font-black fill-purple-600 dark:fill-purple-400" style={{ fontFamily: "'Quicksand', sans-serif" }}>
-                                    {ex.quotient}
-                                </text>
-                                <text x={340} y={135} textAnchor="start" className="text-5xl font-black fill-purple-600 dark:fill-purple-400" style={{ fontFamily: "'Quicksand', sans-serif" }}>
+                    {/* Step 3: Show final result */}
+                    {step >= 3 && (
+                        <>
+                            <div className="text-slate-300 dark:text-zinc-600 animate-in fade-in zoom-in duration-300">
+                                <ArrowDown className="w-8 h-8" />
+                            </div>
+                            <div className="animate-in fade-in slide-in-from-top-4 duration-700 flex flex-col justify-center items-center w-full">
+                                <div className="text-5xl md:text-6xl px-8 py-2 bg-purple-100 dark:bg-purple-900/40 rounded-3xl border-4 border-purple-300 dark:border-purple-700 text-purple-700 dark:text-purple-300 font-black mb-2">
                                     = {ex.result}
-                                </text>
-                                
-                                <text
-                                    x={300}
-                                    y={185}
-                                    textAnchor="middle"
-                                    className="text-xl font-semibold fill-emerald-600 dark:fill-emerald-400"
-                                    style={{ fontFamily: "'Inter', sans-serif" }}
-                                >
+                                </div>
+                                <span className="text-sm md:text-base font-semibold text-emerald-600 dark:text-emerald-400">
                                     ✓ La raíz del cociente = cociente de las raíces
-                                </text>
-                            </g>
-                        )}
-                    </svg>
+                                </span>
+                            </div>
+                        </>
+                    )}
                 </div>
 
                 {/* Legend */}
                 <div className="lg:col-span-1 flex flex-col gap-4 p-5 bg-emerald-50 dark:bg-emerald-950/30 rounded-2xl border border-emerald-100 dark:border-emerald-900/50 h-fit">
                     <h4 className="text-xs uppercase tracking-widest font-bold text-emerald-600 dark:text-emerald-400 mb-1">Propiedad</h4>
-                    <p className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">
-                        {index === 3 ? "³√(a ÷ b) = ³√a ÷ ³√b" : "√(a ÷ b) = √a ÷ √b"}
-                    </p>
+                    <div className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">
+                        {index === 3 ? <Math math="\sqrt[3]{a \div b} = \sqrt[3]{a} \div \sqrt[3]{b}" /> : <Math math="\sqrt{a \div b} = \sqrt{a} \div \sqrt{b}" />}
+                    </div>
                 </div>
             </div>
 
@@ -209,7 +131,7 @@ export function RootOfQuotientVisual() {
                     {step === 0 && `Podemos separar la raíz de un cociente en el cociente de las raíces`}
                     {step === 1 && `Aplicamos la ${index === 3 ? 'raíz cúbica' : 'raíz cuadrada'} al numerador y denominador por separado`}
                     {step === 2 && `Calculamos cada raíz: ${ex.rootNum} y ${ex.rootDen}`}
-                    {step === 3 && `El resultado es ${ex.result}, igual que si calculáramos ${index === 3 ? '³' : ''}√${ex.quotient} directamente`}
+                    {step === 3 && <span className="flex items-center justify-center gap-1">El resultado es {ex.result}, igual que si calculáramos <Math math={`\\sqrt${index === 3 ? '[3]' : ''}{${ex.quotient}}`} /> directamente</span>}
                 </p>
                 <button
                     onClick={handleNext}

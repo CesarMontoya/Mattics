@@ -3,6 +3,16 @@
 import React, { useState } from 'react'
 import { Circle, Play, RotateCcw } from 'lucide-react'
 import { cn } from "@/lib/utils"
+import katex from 'katex'
+import 'katex/dist/katex.min.css'
+
+function Math({ math, block }: { math: string; block?: boolean }) {
+    const html = katex.renderToString(math, {
+        throwOnError: false,
+        displayMode: block
+    })
+    return <span dangerouslySetInnerHTML={{ __html: html }} />
+}
 
 export function LogUnityPropertyVisual() {
     const [step, setStep] = useState(0)
@@ -18,8 +28,8 @@ export function LogUnityPropertyVisual() {
                 {/* Formula Display */}
                 <div className="flex flex-col items-center justify-center py-6 border-b border-slate-100 dark:border-zinc-800 mb-6">
                     <span className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Fórmula</span>
-                    <div className="text-3xl md:text-4xl font-black text-slate-800 dark:text-zinc-200 flex items-center gap-4">
-                        log<tspan className="text-xl">b</tspan>(1) = 0
+                    <div className="text-3xl md:text-4xl font-black text-slate-800 dark:text-zinc-200">
+                        <Math math="\log_b(1) = 0" block />
                     </div>
                 </div>
 
@@ -31,7 +41,7 @@ export function LogUnityPropertyVisual() {
                             <h4 className="font-bold text-slate-700 dark:text-zinc-300">Base 2</h4>
                         </div>
                         <div className="p-4 bg-slate-50 dark:bg-zinc-800/50 rounded-xl font-mono text-sm space-y-2">
-                            <p className="text-slate-600 dark:text-slate-400 font-bold">log₂(1)</p>
+                            <p className="text-slate-600 dark:text-slate-400 font-bold"><Math math="\log_2(1)" /></p>
                             <p className="text-slate-400">¿Cuántas veces es 2 para llegar a 1?</p>
                             <p className="text-blue-600 font-black text-lg">= 0</p>
                         </div>
@@ -44,8 +54,8 @@ export function LogUnityPropertyVisual() {
                             <h4 className="font-bold text-slate-700 dark:text-zinc-300">Cualquier base "a"</h4>
                         </div>
                         <div className="p-4 bg-slate-50 dark:bg-zinc-800/50 rounded-xl font-mono text-sm space-y-2">
-                            <p className="text-slate-600 dark:text-slate-400 font-bold">logₐ(1)</p>
-                            <p className="text-slate-400">Como a⁰ = 1</p>
+                            <p className="text-slate-600 dark:text-slate-400 font-bold"><Math math="\log_a(1)" /></p>
+                            <p className="text-slate-400">Como <Math math="a^0 = 1" /></p>
                             <p className="text-blue-600 font-black text-lg">= 0</p>
                         </div>
                     </div>
