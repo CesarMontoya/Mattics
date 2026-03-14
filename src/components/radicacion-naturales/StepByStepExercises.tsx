@@ -194,157 +194,146 @@ export function StepByStepExercises({ propertyType }: StepByStepExercisesProps) 
                                 )}>
                                     {/* Format renderer for the prompt */}
                                     {prompt.format.map((item, i) => {
+                                        const createBox = (boxIdx: number, scaleDown = false, customMarginClass = "") => {
+                                            const boxVal = boxes[pIdx]?.[boxIdx] || "";
+                                            
+                                            let boxStateClass = "border-slate-300 border-dashed bg-white dark:border-zinc-700 dark:bg-zinc-900";
+                                            if (boxVal) {
+                                                if (isPast || (isActive && isCorrectStep === true)) {
+                                                    boxStateClass = "border-emerald-500 bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400";
+                                                } else if (isActive && isCorrectStep === false) {
+                                                    boxStateClass = "border-red-500 bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-400";
+                                                } else {
+                                                    boxStateClass = "border-purple-500 bg-purple-50 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300 shadow-md";
+                                                }
+                                            } else if (isActive && selectedOption) {
+                                                boxStateClass = "border-purple-300 border-dashed bg-white dark:border-purple-700 dark:bg-zinc-800/70 cursor-pointer hover:border-purple-500 hover:bg-purple-100";
+                                            }
+
+                                            const heightClass = scaleDown ? "h-10 sm:h-12 px-2 text-lg" : "h-12 sm:h-16 px-2 sm:px-4 text-xl sm:text-2xl";
+
+                                            return (
+                                                <div 
+                                                    key={`box-${i}-${boxIdx}`}
+                                                    className={cn(
+                                                        "min-w-[4rem] sm:min-w-[5rem] shrink-0 border-4 rounded-xl flex items-center justify-center transition-all duration-300 cursor-pointer",
+                                                        heightClass,
+                                                        boxStateClass,
+                                                        customMarginClass,
+                                                        (!isActive) && "pointer-events-none"
+                                                    )}
+                                                    onDrop={(e) => handleDrop(e, pIdx, boxIdx)}
+                                                    onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = "copy" }}
+                                                    onClick={() => handleBoxClick(pIdx, boxIdx)}
+                                                >
+                                                    {boxVal ? (
+                                                        <span className="font-bold">
+                                                            {(boxVal.includes('\\') || boxVal.includes('^')) ? <Math math={boxVal} /> : boxVal}
+                                                        </span>
+                                                    ) : (
+                                                        <span className="opacity-20 font-bold">?</span>
+                                                    )}
+                                                </div>
+                                            )
+                                        }
+
                                         if (item === "BOX" || item.includes("BOX")) {
-                                            // Find which box index this represents by counting previous "BOX"es
-                                            // Handle multiple boxes inside a single format string like \frac{BOX}{BOX}
+                                            const baseBoxIdx = prompt.format.slice(0, i).join("").split("BOX").length - 1;
                                             
                                             if (item === "BOX") {
-                                                const boxIdx = prompt.format.slice(0, i).join("").split("BOX").length - 1;
-                                                const boxVal = boxes[pIdx]?.[boxIdx] || "";
-                                                
-                                                let boxStateClass = "border-slate-300 border-dashed bg-white dark:border-zinc-700 dark:bg-zinc-900";
-                                                if (boxVal) {
-                                                    if (isPast || (isActive && isCorrectStep === true)) {
-                                                        boxStateClass = "border-emerald-500 bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400";
-                                                    } else if (isActive && isCorrectStep === false) {
-                                                        boxStateClass = "border-red-500 bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-400";
-                                                    } else {
-                                                        boxStateClass = "border-purple-500 bg-purple-50 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300 shadow-md";
-                                                    }
-                                                } else if (isActive && selectedOption) {
-                                                    boxStateClass = "border-purple-300 border-dashed bg-white dark:border-purple-700 dark:bg-zinc-800/70 cursor-pointer hover:border-purple-500 hover:bg-purple-100";
+                                                return createBox(baseBoxIdx);
+                                            } 
+                                            else {
+                                                // Handle `\frac{BOX \times BOX}{BOX}`
+                                                if (item === "\\frac{BOX \\times BOX}{BOX}") {
+                                                    return (
+                                                        <div key={i} className="flex flex-col items-center gap-1 mx-2">
+                                                            <div className="flex items-center gap-2">
+                                                                {createBox(baseBoxIdx, true)}
+                                                                <span className="text-xl md:text-2xl text-slate-500 font-bold">×</span>
+                                                                {createBox(baseBoxIdx + 1, true)}
+                                                            </div>
+                                                            <div className="w-full h-1 bg-slate-400 dark:bg-slate-600 rounded-full my-1"></div>
+                                                            <div>
+                                                                {createBox(baseBoxIdx + 2, true)}
+                                                            </div>
+                                                        </div>
+                                                    )
                                                 }
 
-                                                return (
-                                                    <div 
-                                                        key={i}
-                                                        className={cn(
-                                                            "min-w-[4rem] sm:min-w-[5rem] h-12 sm:h-16 px-2 sm:px-4 shrink-0 border-4 rounded-xl flex items-center justify-center transition-all duration-300 cursor-pointer",
-                                                            boxStateClass,
-                                                            (!isActive) && "pointer-events-none"
-                                                        )}
-                                                        onDrop={(e) => handleDrop(e, pIdx, boxIdx)}
-                                                        onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = "copy" }}
-                                                        onClick={() => handleBoxClick(pIdx, boxIdx)}
-                                                    >
-                                                        {boxVal ? (
-                                                            <span className="text-xl sm:text-2xl font-bold">
-                                                                {(boxVal.includes('\\') || boxVal.includes('^')) ? <Math math={boxVal} /> : boxVal}
-                                                            </span>
-                                                        ) : (
-                                                            <span className="opacity-20 text-2xl font-bold">?</span>
-                                                        )}
-                                                    </div>
-                                                )
-                                            } else {
-                                                // Handle composite math expressions like "\frac{BOX}{BOX}"
-                                                // We will split by "BOX" and render a flex layout
-                                                const parts = item.split("BOX");
-                                                const baseBoxIdx = prompt.format.slice(0, i).join("").split("BOX").length - 1;
-                                                
-                                                // If it's a fraction, we can parse it specially or just use flex
+                                                // Handle fraction fallback
                                                 if (item.startsWith("\\frac{") || item.startsWith("\\sqrt{\\frac{")) {
                                                     const isRootFraction = item.startsWith("\\sqrt{");
-                                                    return (
-                                                        <div key={i} className="flex items-center gap-2 text-2xl font-bold">
-                                                            {isRootFraction && <span className="text-4xl sm:text-5xl font-light text-slate-500 mr-1 opacity-70">√</span>}
-                                                            <div className="flex flex-col items-center gap-1">
-                                                                {parts.slice(0, -1).map((_, innerIdx) => {
-                                                                    const boxIdx = baseBoxIdx + innerIdx;
-                                                                    const boxVal = boxes[pIdx]?.[boxIdx] || "";
-                                                                    
-                                                                    let boxStateClass = "border-slate-300 border-dashed bg-white dark:border-zinc-700 dark:bg-zinc-900";
-                                                                    if (boxVal) {
-                                                                        if (isPast || (isActive && isCorrectStep === true)) {
-                                                                            boxStateClass = "border-emerald-500 bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400";
-                                                                        } else if (isActive && isCorrectStep === false) {
-                                                                            boxStateClass = "border-red-500 bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-400";
-                                                                        } else {
-                                                                            boxStateClass = "border-purple-500 bg-purple-50 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300 shadow-md";
-                                                                        }
-                                                                    } else if (isActive && selectedOption) {
-                                                                        boxStateClass = "border-purple-300 border-dashed bg-white dark:border-purple-700 dark:bg-zinc-800/70 cursor-pointer hover:border-purple-500 hover:bg-purple-100";
-                                                                    }
-
-                                                                    return (
-                                                                        <React.Fragment key={innerIdx}>
-                                                                            {/* If it's the second box and it's a fraction, render the divider */}
-                                                                            {innerIdx > 0 && <div className="w-full h-1 bg-slate-400 dark:bg-slate-600 rounded-full my-1"></div>}
-                                                                            
-                                                                            <div 
-                                                                                className={cn(
-                                                                                    "min-w-[4rem] sm:min-w-[5rem] h-10 sm:h-12 px-2 shrink-0 border-4 rounded-xl flex items-center justify-center transition-all duration-300 cursor-pointer text-lg",
-                                                                                    boxStateClass,
-                                                                                    (!isActive) && "pointer-events-none"
-                                                                                )}
-                                                                                onDrop={(e) => handleDrop(e, pIdx, boxIdx)}
-                                                                                onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = "copy" }}
-                                                                                onClick={() => handleBoxClick(pIdx, boxIdx)}
-                                                                            >
-                                                                                {boxVal ? (
-                                                                                    <span className="font-bold">
-                                                                                        {(boxVal.includes('\\') || boxVal.includes('^')) ? <Math math={boxVal} /> : boxVal}
-                                                                                    </span>
-                                                                                ) : (
-                                                                                    <span className="opacity-20 font-bold">?</span>
-                                                                                )}
-                                                                            </div>
-                                                                        </React.Fragment>
-                                                                    )
-                                                                })}
-                                                            </div>
-                                                        </div>
-                                                    )
-                                                }
-                                                
-                                                // Handle other composite (e.g. \sqrt[BOX]{81})
-                                                if (item.startsWith("\\sqrt[BOX]{")) {
-                                                    const boxIdx = baseBoxIdx;
-                                                    const boxVal = boxes[pIdx]?.[boxIdx] || "";
-                                                    const radicand = item.replace("\\sqrt[BOX]{", "").replace("}", "");
+                                                    const parts = item.split("BOX");
                                                     
-                                                    let boxStateClass = "border-slate-300 border-dashed bg-white dark:border-zinc-700 dark:bg-zinc-900";
-                                                    if (boxVal) {
-                                                        if (isPast || (isActive && isCorrectStep === true)) {
-                                                            boxStateClass = "border-emerald-500 bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400";
-                                                        } else if (isActive && isCorrectStep === false) {
-                                                            boxStateClass = "border-red-500 bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-400";
-                                                        } else {
-                                                            boxStateClass = "border-purple-500 bg-purple-50 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300 shadow-md";
-                                                        }
-                                                    } else if (isActive && selectedOption) {
-                                                        boxStateClass = "border-purple-300 border-dashed bg-white dark:border-purple-700 dark:bg-zinc-800/70 cursor-pointer hover:border-purple-500 hover:bg-purple-100";
+                                                    const fractionContent = (
+                                                        <div className={cn("flex flex-col items-center gap-1", isRootFraction ? "mx-1" : "mx-2")}>
+                                                            {parts.slice(0, -1).map((_, innerIdx) => (
+                                                                <React.Fragment key={innerIdx}>
+                                                                    {innerIdx > 0 && <div className="w-full h-[3px] bg-slate-400 dark:bg-slate-500 rounded-full my-1"></div>}
+                                                                    {createBox(baseBoxIdx + innerIdx, true)}
+                                                                </React.Fragment>
+                                                            ))}
+                                                        </div>
+                                                    );
+
+                                                    if (isRootFraction) {
+                                                        return (
+                                                            <div key={i} className="flex items-stretch mt-[2px]">
+                                                                <div className="flex items-stretch w-6 sm:w-8 mr-[1px]">
+                                                                    <svg className="w-full h-full text-slate-500/80" preserveAspectRatio="none" viewBox="0 0 100 100">
+                                                                        <path d="M10,60 L45,95 L100,2" fill="none" stroke="currentColor" strokeWidth="4" vectorEffect="non-scaling-stroke" strokeLinecap="round" strokeLinejoin="round"/>
+                                                                    </svg>
+                                                                </div>
+                                                                <div className="border-t-[3px] border-slate-500/80 pt-2 pb-1 pr-2 w-full mt-[1px]">
+                                                                    {fractionContent}
+                                                                </div>
+                                                            </div>
+                                                        )
                                                     }
                                                     
-                                                    return (
-                                                        <div key={i} className="flex items-start">
-                                                            <div 
-                                                                className={cn(
-                                                                    "min-w-[2.5rem] h-8 px-1 shrink-0 border-4 rounded-lg flex items-center justify-center transition-all duration-300 cursor-pointer -mr-1 mt-1 z-10 text-sm",
-                                                                    boxStateClass,
-                                                                    (!isActive) && "pointer-events-none"
-                                                                )}
-                                                                onDrop={(e) => handleDrop(e, pIdx, boxIdx)}
-                                                                onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = "copy" }}
-                                                                onClick={() => handleBoxClick(pIdx, boxIdx)}
-                                                            >
-                                                                {boxVal ? (
-                                                                    <span className="font-bold">
-                                                                        {(boxVal.includes('\\') || boxVal.includes('^')) ? <Math math={boxVal} /> : boxVal}
-                                                                    </span>
-                                                                ) : (
-                                                                    <span className="opacity-20 font-bold">?</span>
-                                                                )}
+                                                    return <div key={i} className="flex items-center">{fractionContent}</div>;
+                                                }
+                                                
+                                                // Handle roots with index (e.g. \sqrt[BOX]{81}, \sqrt[4]{BOX}, \sqrt[BOX]{BOX})
+                                                if (item.startsWith("\\sqrt[")) {
+                                                    const match = item.match(/\\sqrt\[(.*?)\]\{(.*?)\}/);
+                                                    if (match) {
+                                                        const indexPart = match[1];
+                                                        const radicandPart = match[2];
+                                                        
+                                                        let currentInternalBoxIdx = baseBoxIdx;
+                                                        
+                                                        const indexBox = indexPart === "BOX" 
+                                                            ? createBox(currentInternalBoxIdx++, true, "z-10 !h-7 !min-w-[2rem] !px-1 text-xs bg-white dark:bg-zinc-900 mb-[-12px] mr-[-4px]")
+                                                            : <span className="text-sm font-bold text-slate-500 mb-[-12px] mr-[-2px] z-10 bg-white/80 dark:bg-zinc-900/80 rounded px-0.5"><Math math={indexPart} /></span>;
+                                                        
+                                                        const radicandContent = radicandPart === "BOX"
+                                                            ? createBox(currentInternalBoxIdx, false, "mt-1")
+                                                            : <Math math={radicandPart} />;
+
+                                                        return (
+                                                            <div key={i} className="flex items-stretch mt-1">
+                                                                <div className="flex flex-col items-end">
+                                                                    <div className="flex justify-end w-full">
+                                                                        {indexBox}
+                                                                    </div>
+                                                                    <div className="flex items-stretch w-5 sm:w-6 mr-[1px] h-full">
+                                                                        <svg className="w-full h-full text-slate-500/80" preserveAspectRatio="none" viewBox="0 0 100 100">
+                                                                            <path d="M8,65 L40,95 L100,2" fill="none" stroke="currentColor" strokeWidth="5" vectorEffect="non-scaling-stroke" strokeLinecap="round" strokeLinejoin="round"/>
+                                                                        </svg>
+                                                                    </div>
+                                                                </div>
+                                                                <div className="border-t-[3px] border-slate-500/80 pt-2 pb-1 pr-2 w-full mt-[1.5px] min-w-[3rem] flex items-center justify-center">
+                                                                    {radicandContent}
+                                                                </div>
                                                             </div>
-                                                            <span className="text-4xl sm:text-5xl font-light text-slate-500 opacity-70 leading-none">√</span>
-                                                            <span className="text-2xl sm:text-3xl text-slate-500 font-bold border-t-2 border-slate-400/70 pt-1 mt-2">
-                                                                <Math math={radicand} />
-                                                            </span>
-                                                        </div>
-                                                    )
+                                                        )
+                                                    }
                                                 }
                                                 
                                                 // Fallback
+                                                const parts = item.split("BOX");
                                                 return <span key={i}>{parts.join(" BOX ")}</span>
                                             }
                                         } else {

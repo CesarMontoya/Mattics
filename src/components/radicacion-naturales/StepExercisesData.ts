@@ -163,24 +163,31 @@ export const STEP_EXERCISES_DATA = {
             prompts: [
                 {
                     format: ["\\sqrt{\\frac{BOX}{BOX}}"],
-                    answers: ["3^4", "3^2"], // Inside root, solve powers first
+                    answers: ["3^4", "9"], // Inside root, solve powers first
                     symmetric: false,
-                    options: ["3^2", "9", "3^6", "3^4"],
-                    explanationText: "¡Bien! Primero resolvimos la potencia de una potencia $(3^2)^2 = 3^4$ y expresamos el $9$ como $3^2$."
+                    options: ["9", "3^4", "3^6", "81"],
+                    explanationText: "¡Bien! Primero resolvimos la potencia de una potencia $(3^2)^2 = 3^4$ y mantuvimos el $9$."
                 },
                 {
-                    format: ["=", "\\sqrt{BOX}"],
-                    answers: ["3^2"],
+                    format: ["=", "\\frac{BOX}{BOX}"],
+                    answers: ["\\sqrt{81}", "\\sqrt{9}"],
                     symmetric: false,
-                    options: ["3^6", "3^2", "3^4"],
-                    explanationText: "¡Correcto! Dividimos potencias de igual base restando exponentes: $4 - 2 = 2$, queda $3^2$."
+                    options: ["\\sqrt{9}", "81", "\\sqrt{81}", "9", "\\sqrt{27}", "3"],
+                    explanationText: "¡Correcto! Resolvimos $3^4 = 81$ y distribuimos la raíz en numerador y denominador."
+                },
+                {
+                    format: ["=", "\\frac{BOX}{BOX}"],
+                    answers: ["9", "3"],
+                    symmetric: false,
+                    options: ["27", "9", "3", "81"],
+                    explanationText: "¡Excelente! Calculamos las raíces individuales: $\\sqrt{81} = 9$ y $\\sqrt{9} = 3$."
                 },
                 {
                     format: ["=", "BOX"],
                     answers: ["3"],
                     symmetric: false,
                     options: ["27", "9", "3", "81"],
-                    explanationText: "¡Excelente! La raíz cuadrada se anula con la potencia 2, y nos queda 3."
+                    explanationText: "¡Exacto! Finalmente realizamos la división $9 \\div 3 = 3$."
                 }
             ]
         }
@@ -231,10 +238,10 @@ export const STEP_EXERCISES_DATA = {
             question: "\\sqrt[3]{\\sqrt{a}}",
             prompts: [
                 {
-                    format: ["\\sqrt[BOX]{BOX}"],
-                    answers: ["6", "a"],
+                    format: ["\\sqrt[BOX]{a}"],
+                    answers: ["6"],
                     symmetric: false,
-                    options: ["5", "a", "6", "a^2"],
+                    options: ["5", "2", "6", "9"],
                     explanationText: "¡Muy bien! Multiplicamos los índices $3 \\times 2 = 6$, obteniendo $\\sqrt[6]{a}$."
                 }
             ]
@@ -245,24 +252,24 @@ export const STEP_EXERCISES_DATA = {
             prompts: [
                 {
                     format: ["\\sqrt[BOX]{BOX}"],
-                    answers: ["4", "2^8"], // 2x2=4 and (2^2)^4=2^8
+                    answers: ["4", "2^8"],
                     symmetric: false,
                     options: ["8", "2^8", "2^6", "4"],
                     explanationText: "¡Excelente! Resolvimos potencia de potencia $(2^2)^4 = 2^8$, y multiplicamos los índices $2 \\times 2 = 4$."
                 },
                 {
-                    format: ["=", "BOX"],
-                    answers: ["2^2"],
+                    format: ["=", "\\sqrt[4]{BOX}"],
+                    answers: ["256"],
                     symmetric: false,
-                    options: ["2^4", "2^2", "2^8"],
-                    explanationText: "¡Bien! Dividimos exponente entre índice: $8 \\div 4 = 2$, por lo que nos queda $2^2$."
+                    options: ["256", "128", "512", "64"],
+                    explanationText: "¡Bien! Desarrollamos la potencia $2^8 = 256$, manteniendo la raíz cuarta."
                 },
                 {
                     format: ["=", "BOX"],
                     answers: ["4"],
                     symmetric: false,
-                    options: ["16", "2", "4", "8"],
-                    explanationText: "¡Correcto! Finalmente $2^2 = 4$."
+                    options: ["2", "4", "8", "6"],
+                    explanationText: "¡Perfecto! Finalmente calculamos que $\\sqrt[4]{256} = 4$, ya que $4 \\times 4 \\times 4 \\times 4 = 256$."
                 }
             ]
         }
