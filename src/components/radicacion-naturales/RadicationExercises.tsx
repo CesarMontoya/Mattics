@@ -216,13 +216,13 @@ export function RadicationExercises() {
             </div>
 
             {/* Drag & Drop Visual Area */}
-            <div className="flex flex-col items-center justify-center p-8 bg-slate-50 dark:bg-zinc-800/50 rounded-2xl border border-slate-200 dark:border-zinc-800 overflow-x-auto min-w-full">
+            <div className="flex flex-col items-center justify-start md:justify-center p-8 bg-slate-50 dark:bg-zinc-800/50 rounded-2xl border border-slate-200 dark:border-zinc-800 overflow-x-auto min-w-full">
                 
                 <p className="text-slate-500 dark:text-zinc-400 font-medium mb-8 text-center max-w-xl">
                     Arrastra el número correcto a los recuadros vacíos. Recuerda que para una raíz, <b>todos los pasos multiplicativos deben ser con el mismo factor</b> y su producto debe dar como resultado el radicando.
                 </p>
 
-                <div className="flex flex-col xl:flex-row items-center justify-center gap-4 xl:gap-6 w-full pb-4">
+                <div className="flex flex-col items-center justify-center gap-6 w-full pb-4">
                     {/* Root Expression and Answer */}
                     <div className="flex items-center gap-2 md:gap-3 shrink-0">
                         <div className="text-4xl md:text-5xl lg:text-6xl font-black text-purple-600 dark:text-purple-400 whitespace-nowrap">
@@ -237,12 +237,12 @@ export function RadicationExercises() {
                     </div>
                     
                     {/* Arrow Divider */}
-                    <div className="text-slate-300 dark:text-zinc-600 shrink-0 my-2 xl:my-0">
-                        <ArrowRight className="w-6 h-6 md:w-8 md:h-8 rotate-90 xl:rotate-0" />
+                    <div className="text-slate-300 dark:text-zinc-600 shrink-0 my-2">
+                        <ArrowRight className="w-6 h-6 md:w-8 md:h-8 rotate-90" />
                     </div>
 
                     {/* Boxes Area */}
-                    <div className="flex items-center justify-center gap-1 md:gap-2 bg-purple-50/50 dark:bg-purple-900/10 p-2 md:p-4 rounded-2xl md:rounded-3xl border border-purple-100 dark:border-purple-900/30 overflow-x-auto max-w-full">
+                    <div className="flex items-center justify-start md:justify-center gap-1.5 md:gap-2 bg-purple-50/50 dark:bg-purple-900/10 p-2 md:p-4 rounded-2xl md:rounded-3xl border border-purple-100 dark:border-purple-900/30 overflow-x-auto max-w-full">
                         {boxes.map((boxVal, idx) => (
                             <React.Fragment key={idx}>
                                 <div 
