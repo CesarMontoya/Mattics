@@ -7,9 +7,12 @@ import { FlowContainer } from "@/components/layout/FlowContainer"
 import { Button } from "@/components/ui/sidebar/button"
 import {
     CheckCircle2, XCircle, Trophy, RotateCcw, Lock, Star,
-    Zap, Layers, Grid3x3, Search, Puzzle, Globe, ChevronDown
+    Zap, Layers, Grid3x3, Search, Puzzle, Globe, ChevronDown, UserCircle
 } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { useStudent } from "@/hooks/use-student"
+import { registerAttempt, registerPillCompletion } from "@/lib/tracking"
+import { StudentLogin } from "./StudentLogin"
 
 // ─────────────────────────────────────────────
 // TYPES & CONSTANTS
@@ -590,6 +593,7 @@ export default function RutaTriadaPage() {
         { label: "Ruta: La Tríada Aritmética" },
     ]
 
+    const { student, login, logout, loading } = useStudent()
     const [pills, setPills] = React.useState<PillState[]>(() => buildInitialState())
     const [matchDone, setMatchDone] = React.useState<boolean>(() => {
         const s = pills[4]
@@ -601,6 +605,17 @@ export default function RutaTriadaPage() {
     }, [pills])
 
     const handleAnswer = (pillIdx: number, qId: string, value: string, correct: boolean) => {
+        if (student) {
+            registerAttempt({
+                student,
+                pillId: pillIdx + 1,
+                questionId: qId,
+                answer: value,
+                isCorrect: correct,
+                timestamp: new Date().toISOString()
+            })
+        }
+
         setPills(prev => {
             const next = prev.map((p, i): PillState => {
                 if (i !== pillIdx) return p
@@ -616,6 +631,17 @@ export default function RutaTriadaPage() {
 
             if (allCorrect && pill.status !== "complete") {
                 next[pillIdx] = { ...next[pillIdx], status: "complete" }
+                
+                if (student) {
+                    const stats = Object.values(next[pillIdx].answers)
+                    registerPillCompletion(
+                        student,
+                        pillIdx + 1,
+                        stats.filter(a => a?.correct).length,
+                        qs.length
+                    )
+                }
+
                 if (pillIdx + 1 < next.length) {
                     next[pillIdx + 1] = { ...next[pillIdx + 1], status: "active" }
                 }
@@ -675,161 +701,185 @@ export default function RutaTriadaPage() {
                 icon={<Star className="h-10 w-10 text-violet-600" />}
                 className="animate-in fade-in duration-700"
             >
-                <FlowContainer>
-                    {/* Progress */}
-                    <ProgressBar pills={pills} />
-
-                    {/* ── PÍLDORA 1 ── */}
-                    <PillWrapper meta={PILL_META[0]} status={pills[0].status} stats={pillStats(0)}>
-                        <div className="space-y-2">
-                            <p className="text-slate-600 dark:text-zinc-400">
-                                Cuenta la leyenda que un sabio pidió como recompensa granos de trigo: <b>1 grano</b> en la primera casilla del ajedrez, el <b>doble</b> en cada casilla siguiente. El rey aceptó... sin saber que nunca podría cumplir su promesa.
-                            </p>
-                        </div>
-                        <ChessVisual />
-                        <div className="pt-2">
-                            <h4 className="font-bold text-slate-700 dark:text-zinc-300 mb-4">Ahora pon a prueba lo que observaste:</h4>
-                            <QASection
-                                questions={PILL1_QS}
-                                pillId={1}
-                                answers={pills[0].answers}
-                                onAnswer={(qId, val, correct) => handleAnswer(0, qId, val, correct)}
-                                onRetry={(qId) => handleRetryAnswer(0, qId)}
-                            />
-                        </div>
-                    </PillWrapper>
-
-                    {/* ── PÍLDORA 2 ── */}
-                    <PillWrapper meta={PILL_META[1]} status={pills[1].status} stats={pillStats(1)}>
-                        <p className="text-slate-600 dark:text-zinc-400">
-                            Las potencias siguen reglas que permiten simplificar cálculos complejos. Dominar estas propiedades es como aprender los "atajos" del álgebra.
-                        </p>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                            {[
-                                { rule: "aᵐ × aⁿ = aᵐ⁺ⁿ", name: "Producto – misma base", color: "bg-amber-50 border-amber-200" },
-                                { rule: "aᵐ ÷ aⁿ = aᵐ⁻ⁿ", name: "Cociente – misma base", color: "bg-orange-50 border-orange-200" },
-                                { rule: "(aᵐ)ⁿ = aᵐⁿ", name: "Potencia de potencia", color: "bg-yellow-50 border-yellow-200" },
-                                { rule: "a⁰ = 1", name: "Exponente cero", color: "bg-lime-50 border-lime-200" },
-                            ].map(p => (
-                                <div key={p.name} className={cn("rounded-2xl border-2 p-4 space-y-1", p.color)}>
-                                    <p className="font-mono font-bold text-xl text-slate-800">{p.rule}</p>
-                                    <p className="text-sm text-slate-600">{p.name}</p>
+                {loading ? (
+                    <div className="flex justify-center items-center py-20">
+                        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-violet-600"></div>
+                    </div>
+                ) : !student ? (
+                    <StudentLogin onLogin={(id) => login({ id })} />
+                ) : (
+                    <FlowContainer>
+                        {/* Student Badge */}
+                        <div className="flex items-center justify-between bg-white dark:bg-zinc-900 px-6 py-3 rounded-2xl border border-slate-200 dark:border-zinc-800 shadow-sm mb-4">
+                            <div className="flex items-center gap-3">
+                                <div className="bg-blue-100 dark:bg-blue-900/30 p-2 rounded-xl">
+                                    <UserCircle className="h-5 w-5 text-blue-600" />
                                 </div>
-                            ))}
-                        </div>
-                        <QASection
-                            questions={PILL2_QS}
-                            pillId={2}
-                            answers={pills[1].answers}
-                            onAnswer={(qId, val, correct) => handleAnswer(1, qId, val, correct)}
-                            onRetry={(qId) => handleRetryAnswer(1, qId)}
-                        />
-                    </PillWrapper>
-
-                    {/* ── PÍLDORA 3 ── */}
-                    <PillWrapper meta={PILL_META[2]} status={pills[2].status} stats={pillStats(2)}>
-                        <p className="text-slate-600 dark:text-zinc-400">
-                            La radicación es la operación inversa de la potenciación. Si tenemos un cuadrado de <b>196 fichas</b>, ¿cuántas forman cada lado? Eso es exactamente lo que responde la raíz cuadrada.
-                        </p>
-                        <div className="flex flex-wrap gap-4 justify-center">
-                            {[4, 5, 6].map(side => <SquareVisual key={side} side={side} />)}
-                        </div>
-                        <QASection
-                            questions={PILL3_QS}
-                            pillId={3}
-                            answers={pills[2].answers}
-                            onAnswer={(qId, val, correct) => handleAnswer(2, qId, val, correct)}
-                            onRetry={(qId) => handleRetryAnswer(2, qId)}
-                        />
-                    </PillWrapper>
-
-                    {/* ── PÍLDORA 4 ── */}
-                    <PillWrapper meta={PILL_META[3]} status={pills[3].status} stats={pillStats(3)}>
-                        <p className="text-slate-600 dark:text-zinc-400">
-                            El logaritmo es el <b>"buscador de exponentes"</b>. Si sabemos que 2^? = 8, el logaritmo base 2 de 8 nos da la respuesta: <b>3</b>.
-                        </p>
-                        <BacteriaTable />
-                        <QASection
-                            questions={PILL4_QS}
-                            pillId={4}
-                            answers={pills[3].answers}
-                            onAnswer={(qId, val, correct) => handleAnswer(3, qId, val, correct)}
-                            onRetry={(qId) => handleRetryAnswer(3, qId)}
-                        />
-                    </PillWrapper>
-
-                    {/* ── PÍLDORA 5 – MATCHING ── */}
-                    <PillWrapper meta={PILL_META[4]} status={pills[4].status} stats={{ correct: matchDone ? 6 : 0, total: 6 }}>
-                        <p className="text-slate-600 dark:text-zinc-400">
-                            Potenciación, radicación y logaritmación son <b>tres formas de expresar la misma relación</b>. Conecta las expresiones equivalentes para dominar la tríada.
-                        </p>
-                        {matchDone ? (
-                            <div className="bg-emerald-50 border-2 border-emerald-300 rounded-2xl p-6 text-center space-y-2">
-                                <CheckCircle2 className="h-10 w-10 text-emerald-500 mx-auto" />
-                                <p className="font-bold text-emerald-800 text-lg">¡Dominio: conectaste todos los pares!</p>
-                            </div>
-                        ) : (
-                            <MatchingGame onComplete={handleMatchComplete} />
-                        )}
-                    </PillWrapper>
-
-                    {/* ── PÍLDORA 6 – APLICACIONES ── */}
-                    <PillWrapper meta={PILL_META[5]} status={pills[5].status} stats={pillStats(5)}>
-                        <p className="text-slate-600 dark:text-zinc-400">
-                            Los logaritmos y las potencias están en todas partes: en la escala de terremotos, el sonido, la química y las redes sociales. Aplica lo que aprendiste en situaciones reales.
-                        </p>
-                        <QASection
-                            questions={PILL6_QS}
-                            pillId={6}
-                            answers={pills[5].answers}
-                            onAnswer={(qId, val, correct) => handleAnswer(5, qId, val, correct)}
-                            onRetry={(qId) => handleRetryAnswer(5, qId)}
-                        />
-                    </PillWrapper>
-
-                    {/* FINAL CELEBRATION */}
-                    {allComplete && (
-                        <div className="py-8 animate-in zoom-in-95 duration-700">
-                            <div className="bg-gradient-to-br from-violet-600 to-indigo-700 rounded-3xl p-10 text-white text-center space-y-6 shadow-2xl shadow-violet-200 relative overflow-hidden">
-                                <div className="absolute inset-0 opacity-10">
-                                    {[...Array(20)].map((_, i) => (
-                                        <Star key={i} className="absolute text-yellow-300"
-                                            style={{ top: `${Math.random() * 100}%`, left: `${Math.random() * 100}%`, width: `${12 + Math.random() * 20}px`, opacity: Math.random() }}
-                                        />
-                                    ))}
-                                </div>
-                                <div className="relative">
-                                    <div className="absolute -inset-4 rounded-full bg-yellow-400/20 animate-ping" />
-                                    <div className="h-24 w-24 mx-auto rounded-full bg-gradient-to-tr from-yellow-400 to-orange-500 flex items-center justify-center shadow-2xl relative">
-                                        <Trophy className="h-12 w-12 text-white" />
-                                    </div>
-                                </div>
-                                <div className="space-y-2">
-                                    <h2 className="text-4xl font-extrabold">¡Ruta Completada!</h2>
-                                    <p className="text-violet-200 text-xl">Has dominado la Tríada Aritmética: Potenciación, Radicación y Logaritmación.</p>
-                                </div>
-                                <div className="flex flex-wrap justify-center gap-4 pt-4">
-                                    <Button size="lg" variant="outline" onClick={handleReset}
-                                        className="rounded-full px-8 border-white/40 text-white hover:bg-white/10">
-                                        <RotateCcw className="h-4 w-4 mr-2" /> Reiniciar ruta
-                                    </Button>
-                                    <Button size="lg" asChild className="rounded-full px-8 bg-white text-violet-700 hover:bg-violet-50 font-bold shadow-lg">
-                                        <a href="/matematicas-7">Volver a Matemáticas 7</a>
-                                    </Button>
+                                <div>
+                                    <p className="text-xs text-slate-500 uppercase font-bold tracking-wider">Estudiante (Documento)</p>
+                                    <p className="font-bold text-slate-800 dark:text-zinc-200">{student.id}</p>
                                 </div>
                             </div>
-                        </div>
-                    )}
-
-                    {!allComplete && (
-                        <div className="flex justify-center pb-4">
-                            <Button variant="outline" size="sm" onClick={handleReset}
-                                className="rounded-full text-slate-500 border-slate-200 hover:border-rose-300 hover:text-rose-500">
-                                <RotateCcw className="h-3 w-3 mr-1" /> Reiniciar progreso
+                            <Button variant="ghost" size="sm" onClick={logout} className="text-slate-400 hover:text-rose-500 text-xs">
+                                Cambiar
                             </Button>
                         </div>
-                    )}
-                </FlowContainer>
+
+                        {/* Progress */}
+                        <ProgressBar pills={pills} />
+
+                        {/* ── PÍLDORA 1 ── */}
+                        <PillWrapper meta={PILL_META[0]} status={pills[0].status} stats={pillStats(0)}>
+                            <div className="space-y-2">
+                                <p className="text-slate-600 dark:text-zinc-400">
+                                    Cuenta la leyenda que un sabio pidió como recompensa granos de trigo: <b>1 grano</b> en la primera casilla del ajedrez, el <b>doble</b> en cada casilla siguiente. El rey aceptó... sin saber que nunca podría cumplir su promesa.
+                                </p>
+                            </div>
+                            <ChessVisual />
+                            <div className="pt-2">
+                                <h4 className="font-bold text-slate-700 dark:text-zinc-300 mb-4">Ahora pon a prueba lo que observaste:</h4>
+                                <QASection
+                                    questions={PILL1_QS}
+                                    pillId={1}
+                                    answers={pills[0].answers}
+                                    onAnswer={(qId, val, correct) => handleAnswer(0, qId, val, correct)}
+                                    onRetry={(qId) => handleRetryAnswer(0, qId)}
+                                />
+                            </div>
+                        </PillWrapper>
+
+                        {/* ── PÍLDORA 2 ── */}
+                        <PillWrapper meta={PILL_META[1]} status={pills[1].status} stats={pillStats(1)}>
+                            <p className="text-slate-600 dark:text-zinc-400">
+                                Las potencias siguen reglas que permiten simplificar cálculos complejos. Dominar estas propiedades es como aprender los "atajos" del álgebra.
+                            </p>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                {[
+                                    { rule: "aᵐ × aⁿ = aᵐ⁺ⁿ", name: "Producto – misma base", color: "bg-amber-50 border-amber-200" },
+                                    { rule: "aᵐ ÷ aⁿ = aᵐ⁻ⁿ", name: "Cociente – misma base", color: "bg-orange-50 border-orange-200" },
+                                    { rule: "(aᵐ)ⁿ = aᵐⁿ", name: "Potencia de potencia", color: "bg-yellow-50 border-yellow-200" },
+                                    { rule: "a⁰ = 1", name: "Exponente cero", color: "bg-lime-50 border-lime-200" },
+                                ].map(p => (
+                                    <div key={p.name} className={cn("rounded-2xl border-2 p-4 space-y-1", p.color)}>
+                                        <p className="font-mono font-bold text-xl text-slate-800">{p.rule}</p>
+                                        <p className="text-sm text-slate-600">{p.name}</p>
+                                    </div>
+                                ))}
+                            </div>
+                            <QASection
+                                questions={PILL2_QS}
+                                pillId={2}
+                                answers={pills[1].answers}
+                                onAnswer={(qId, val, correct) => handleAnswer(1, qId, val, correct)}
+                                onRetry={(qId) => handleRetryAnswer(1, qId)}
+                            />
+                        </PillWrapper>
+
+                        {/* ── PÍLDORA 3 ── */}
+                        <PillWrapper meta={PILL_META[2]} status={pills[2].status} stats={pillStats(2)}>
+                            <p className="text-slate-600 dark:text-zinc-400">
+                                La radicación es la operación inversa de la potenciación. Si tenemos un cuadrado de <b>196 fichas</b>, ¿cuántas forman cada lado? Eso es exactamente lo que responde la raíz cuadrada.
+                            </p>
+                            <div className="flex flex-wrap gap-4 justify-center">
+                                {[4, 5, 6].map(side => <SquareVisual key={side} side={side} />)}
+                            </div>
+                            <QASection
+                                questions={PILL3_QS}
+                                pillId={3}
+                                answers={pills[2].answers}
+                                onAnswer={(qId, val, correct) => handleAnswer(2, qId, val, correct)}
+                                onRetry={(qId) => handleRetryAnswer(2, qId)}
+                            />
+                        </PillWrapper>
+
+                        {/* ── PÍLDORA 4 ── */}
+                        <PillWrapper meta={PILL_META[3]} status={pills[3].status} stats={pillStats(3)}>
+                            <p className="text-slate-600 dark:text-zinc-400">
+                                El logaritmo es el <b>"buscador de exponentes"</b>. Si sabemos que 2^? = 8, el logaritmo base 2 de 8 nos da la respuesta: <b>3</b>.
+                            </p>
+                            <BacteriaTable />
+                            <QASection
+                                questions={PILL4_QS}
+                                pillId={4}
+                                answers={pills[3].answers}
+                                onAnswer={(qId, val, correct) => handleAnswer(3, qId, val, correct)}
+                                onRetry={(qId) => handleRetryAnswer(3, qId)}
+                            />
+                        </PillWrapper>
+
+                        {/* ── PÍLDORA 5 – MATCHING ── */}
+                        <PillWrapper meta={PILL_META[4]} status={pills[4].status} stats={{ correct: matchDone ? 6 : 0, total: 6 }}>
+                            <p className="text-slate-600 dark:text-zinc-400">
+                                Potenciación, radicación y logaritmación son <b>tres formas de expresar la misma relación</b>. Conecta las expresiones equivalentes para dominar la tríada.
+                            </p>
+                            {matchDone ? (
+                                <div className="bg-emerald-50 border-2 border-emerald-300 rounded-2xl p-6 text-center space-y-2">
+                                    <CheckCircle2 className="h-10 w-10 text-emerald-500 mx-auto" />
+                                    <p className="font-bold text-emerald-800 text-lg">¡Dominio: conectaste todos los pares!</p>
+                                </div>
+                            ) : (
+                                <MatchingGame onComplete={handleMatchComplete} />
+                            )}
+                        </PillWrapper>
+
+                        {/* ── PÍLDORA 6 – APLICACIONES ── */}
+                        <PillWrapper meta={PILL_META[5]} status={pills[5].status} stats={pillStats(5)}>
+                            <p className="text-slate-600 dark:text-zinc-400">
+                                Los logaritmos y las potencias están en todas partes: en la escala de terremotos, el sonido, la química y las redes sociales. Aplica lo que aprendiste en situaciones reales.
+                            </p>
+                            <QASection
+                                questions={PILL6_QS}
+                                pillId={6}
+                                answers={pills[5].answers}
+                                onAnswer={(qId, val, correct) => handleAnswer(5, qId, val, correct)}
+                                onRetry={(qId) => handleRetryAnswer(5, qId)}
+                            />
+                        </PillWrapper>
+
+                        {/* FINAL CELEBRATION */}
+                        {allComplete && (
+                            <div className="py-8 animate-in zoom-in-95 duration-700">
+                                <div className="bg-gradient-to-br from-violet-600 to-indigo-700 rounded-3xl p-10 text-white text-center space-y-6 shadow-2xl shadow-violet-200 relative overflow-hidden">
+                                    <div className="absolute inset-0 opacity-10">
+                                        {[...Array(20)].map((_, i) => (
+                                            <Star key={i} className="absolute text-yellow-300"
+                                                style={{ top: `${Math.random() * 100}%`, left: `${Math.random() * 100}%`, width: `${12 + Math.random() * 20}px`, opacity: Math.random() }}
+                                            />
+                                        ))}
+                                    </div>
+                                    <div className="relative">
+                                        <div className="absolute -inset-4 rounded-full bg-yellow-400/20 animate-ping" />
+                                        <div className="h-24 w-24 mx-auto rounded-full bg-gradient-to-tr from-yellow-400 to-orange-500 flex items-center justify-center shadow-2xl relative">
+                                            <Trophy className="h-12 w-12 text-white" />
+                                        </div>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <h2 className="text-4xl font-extrabold">¡Ruta Completada!</h2>
+                                        <p className="text-violet-200 text-xl">Has dominado la Tríada Aritmética: Potenciación, Radicación y Logaritmación.</p>
+                                    </div>
+                                    <div className="flex flex-wrap justify-center gap-4 pt-4">
+                                        <Button size="lg" variant="outline" onClick={handleReset}
+                                            className="rounded-full px-8 border-white/40 text-white hover:bg-white/10">
+                                            <RotateCcw className="h-4 w-4 mr-2" /> Reiniciar ruta
+                                        </Button>
+                                        <Button size="lg" asChild className="rounded-full px-8 bg-white text-violet-700 hover:bg-violet-50 font-bold shadow-lg">
+                                            <a href="/matematicas-7">Volver a Matemáticas 7</a>
+                                        </Button>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {!allComplete && (
+                            <div className="flex justify-center pb-4">
+                                <Button variant="outline" size="sm" onClick={handleReset}
+                                    className="rounded-full text-slate-500 border-slate-200 hover:border-rose-300 hover:text-rose-500">
+                                    <RotateCcw className="h-3 w-3 mr-1" /> Reiniciar progreso
+                                </Button>
+                            </div>
+                        )}
+                    </FlowContainer>
+                )}
             </PageContent>
         </SidebarLayout>
     )
