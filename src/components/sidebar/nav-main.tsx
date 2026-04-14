@@ -87,7 +87,7 @@ export function NavMain({
                                       <SidebarMenuSubItem key={deepItem.title}>
                                         <SidebarMenuSubButton asChild>
                                           <a href={deepItem.url}>
-                                            <span className="text-xs opacity-80">{deepItem.title}</span>
+                                            <span>{deepItem.title}</span>
                                           </a>
                                         </SidebarMenuSubButton>
                                       </SidebarMenuSubItem>

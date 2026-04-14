@@ -62,6 +62,10 @@ const data = {
         {
           title: "Números Enteros",
           url: "#",
+          items: [
+            { title: "Positivos y Negativos", url: "/matematicas-7/positivos-y-negativos" },
+            { title: "Valores Relativos", url: "/matematicas-7/valores-relativos" },
+          ],
         },
         {
           title: "Números Racionales",
