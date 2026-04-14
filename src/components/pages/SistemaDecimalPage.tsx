@@ -7,7 +7,7 @@ import { FlowContainer } from "@/components/layout/FlowContainer"
 import { UnorderedPoints } from "@/components/sistema-decimal/UnorderedPoints"
 import { OrderedPoints } from "@/components/sistema-decimal/OrderedPoints"
 import { DecimalSystemExplanation } from "@/components/sistema-decimal/DecimalSystemExplanation"
-import { Binary, Lightbulb, Users } from "lucide-react"
+import { Binary, Lightbulb } from "lucide-react"
 
 export default function SistemaDecimalPage() {
     const breadcrumbs = [

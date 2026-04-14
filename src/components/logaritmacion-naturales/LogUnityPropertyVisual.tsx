@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useState } from 'react'
-import { Circle, Play, RotateCcw } from 'lucide-react'
+import { Play, RotateCcw } from 'lucide-react'
 import { cn } from "@/lib/utils"
 import katex from 'katex'
 import 'katex/dist/katex.min.css'

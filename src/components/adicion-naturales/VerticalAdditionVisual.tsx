@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useState, useEffect, useCallback } from 'react'
-import { Plus, RotateCcw, ArrowRight, ArrowLeft, Sparkles, Keyboard } from 'lucide-react'
+import { Plus, RotateCcw, ArrowRight, ArrowLeft, Sparkles } from 'lucide-react'
 import { cn } from "@/lib/utils"
 
 export function VerticalAdditionVisual() {

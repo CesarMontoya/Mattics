@@ -1,5 +1,4 @@
 import React from "react"
-import { School, Home, Tent } from "lucide-react"
 
 export function NumberLineConcept() {
     return (
