@@ -6,10 +6,10 @@ import { PageContent } from "@/components/layout/PageContent"
 import { FlowContainer } from "@/components/layout/FlowContainer"
 import { MapPin } from "lucide-react"
 
-import { ReferenceConcept } from "../valores-relativos/ReferenceConcept"
-import { OtherExamplesConcept } from "../valores-relativos/OtherExamplesConcept"
-import { NumberLineConcept } from "../valores-relativos/NumberLineConcept"
-import { ContextualExercises } from "../valores-relativos/ContextualExercises"
+import { ReferenceConcept } from "../numeros-enteros/valores-relativos/ReferenceConcept"
+import { OtherExamplesConcept } from "../numeros-enteros/valores-relativos/OtherExamplesConcept"
+import { NumberLineConcept } from "../numeros-enteros/valores-relativos/NumberLineConcept"
+import { ContextualExercises } from "../numeros-enteros/valores-relativos/ContextualExercises"
 
 export default function ValoresRelativosPage() {
     const breadcrumbs = [
