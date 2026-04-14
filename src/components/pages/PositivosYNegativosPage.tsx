@@ -6,14 +6,14 @@ import { PageContent } from "@/components/layout/PageContent"
 import { FlowContainer } from "@/components/layout/FlowContainer"
 import { PlusCircle } from "lucide-react"
 
-import { PositiveTilesConcept } from "../positivos-y-negativos/PositiveTilesConcept"
-import { CancellationConcept } from "../positivos-y-negativos/CancellationConcept"
+import { PositiveTilesConcept } from "../numeros-enteros/positivos-y-negativos/PositiveTilesConcept"
+import { CancellationConcept } from "../numeros-enteros/positivos-y-negativos/CancellationConcept"
 
-import { ZeroConcept } from "../positivos-y-negativos/ZeroConcept"
-import { NegativeTilesConcept } from "../positivos-y-negativos/NegativeTilesConcept"
-import { NegativeResultConcept } from "../positivos-y-negativos/NegativeResultConcept"
-import { SubtractionConcept } from "../positivos-y-negativos/SubtractionConcept"
-import { CombinedExercises } from "../positivos-y-negativos/CombinedExercises"
+import { ZeroConcept } from "../numeros-enteros/positivos-y-negativos/ZeroConcept"
+import { NegativeTilesConcept } from "../numeros-enteros/positivos-y-negativos/NegativeTilesConcept"
+import { NegativeResultConcept } from "../numeros-enteros/positivos-y-negativos/NegativeResultConcept"
+import { SubtractionConcept } from "../numeros-enteros/positivos-y-negativos/SubtractionConcept"
+import { CombinedExercises } from "../numeros-enteros/positivos-y-negativos/CombinedExercises"
 export default function PositivosYNegativosPage() {
     const breadcrumbs = [
         { label: "Matemáticas 7", href: "/matematicas-7" },

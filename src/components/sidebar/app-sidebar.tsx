@@ -6,11 +6,9 @@ import {
   Bot,
   Frame,
   LifeBuoy,
-  Map,
   PieChart,
   Send,
   Settings2,
-  SquareTerminal,
   Shield,
   FileText,
 } from "lucide-react"
