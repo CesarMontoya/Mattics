@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useState } from "react"
-import { FunctionSquare, Sigma, Parentheses, Brain, CheckCircle2, HelpCircle, Thermometer, ArrowRightLeft, Target, Info } from "lucide-react"
+import { Sigma, Parentheses, Brain, CheckCircle2, HelpCircle, Thermometer, ArrowRightLeft, Target, Info } from "lucide-react"
 import { Math } from "@/components/ui/math"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/sidebar/tooltip"
 

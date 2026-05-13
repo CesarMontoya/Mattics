@@ -64,6 +64,7 @@ const data = {
             { title: "Positivos y Negativos", url: "/matematicas-7/positivos-y-negativos" },
             { title: "Valores Relativos", url: "/matematicas-7/valores-relativos" },
             { title: "Adición y Sustracción", url: "/matematicas-7/adicion-sustraccion-enteros" },
+            { title: "Multiplicación y División", url: "/matematicas-7/multiplicacion-division-enteros" },
           ],
         },
         {
@@ -163,4 +164,3 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     </Sidebar>
   )
 }
-
