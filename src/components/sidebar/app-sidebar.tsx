@@ -65,6 +65,7 @@ const data = {
             { title: "Valores Relativos", url: "/matematicas-7/valores-relativos" },
             { title: "Adición y Sustracción", url: "/matematicas-7/adicion-sustraccion-enteros" },
             { title: "Multiplicación y División", url: "/matematicas-7/multiplicacion-division-enteros" },
+            { title: "Potenciación, Radicación y Logaritmación", url: "/matematicas-7/potenciacion-radicacion-logaritmacion-enteros" },
           ],
         },
         {
