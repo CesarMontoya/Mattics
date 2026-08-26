@@ -13,8 +13,22 @@ export default defineConfig({
   },
   projects: [
     {
+      name: 'setup',
+      testMatch: /.*\.setup\.ts/,
+    },
+    {
       name: 'chromium',
+      testIgnore: [/.*\.setup\.ts/, /brilliant\.spec\.ts/],
       use: { ...devices['Desktop Chrome'] },
+    },
+    {
+      name: 'brilliant',
+      testMatch: /brilliant\.spec\.ts/,
+      use: {
+        ...devices['Desktop Chrome'],
+        storageState: 'playwright/.auth/brilliant.json',
+      },
+      dependencies: ['setup'],
     },
   ],
   webServer: {
