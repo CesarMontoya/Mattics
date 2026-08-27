@@ -43,11 +43,9 @@ await new Promise<void>((resolve) => {
 });
 
 // Exportar storageState para que los tests de Playwright (project brilliant) lo usen
-const context = browser.contexts()[0] ?? browser.pages()[0]?.context();
-if (context) {
-  await context.storageState({ path: './playwright/.auth/brilliant.json' });
-  console.log('\n✓ storageState guardado en playwright/.auth/brilliant.json');
-}
+// launchPersistentContext retorna un BrowserContext directamente, no un Browser
+await browser.storageState({ path: './playwright/.auth/brilliant.json' });
+console.log('\n✓ storageState guardado en playwright/.auth/brilliant.json');
 
 await browser.close();
 console.log(`✓ Perfil persistente guardado en ${PROFILE_DIR}\n`);
