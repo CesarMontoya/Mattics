@@ -13,7 +13,10 @@
     "test:headed": "playwright test --headed --project=chromium",
     "test:auth": "playwright test --project=setup --headed",
     "test:brilliant": "playwright test --project=brilliant --headed",
-    "test:all": "playwright test"
+    "test:all": "playwright test",
+    "login": "bun scripts/login.ts",
+    "login:brilliant": "bun scripts/login.ts https://brilliant.org/login",
+    "session:check": "bun scripts/use-session.ts"
   },
   "dependencies": {
     "@astrojs/node": "^10.0.4",

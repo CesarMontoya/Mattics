@@ -15,6 +15,7 @@ export default defineConfig({
     {
       name: 'setup',
       testMatch: /.*\.setup\.ts/,
+      timeout: 6 * 60 * 1000,
     },
     {
       name: 'chromium',
@@ -26,6 +27,10 @@ export default defineConfig({
       testMatch: /brilliant\.spec\.ts/,
       use: {
         ...devices['Desktop Chrome'],
+        channel: 'chrome',
+        launchOptions: {
+          args: ['--disable-blink-features=AutomationControlled'],
+        },
         storageState: 'playwright/.auth/brilliant.json',
       },
       dependencies: ['setup'],

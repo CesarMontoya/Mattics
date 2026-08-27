@@ -16,6 +16,7 @@ const authFile = 'playwright/.auth/brilliant.json';
  *  5. Los siguientes tests reusarán esa sesión sin volver a loguear.
  */
 setup('authenticate brilliant (Google)', async ({ page }) => {
+  setup.setTimeout(6 * 60 * 1000);
   await page.goto('https://brilliant.org/login');
 
   console.log('\n=== LOGIN MANUAL REQUERIDO ===');

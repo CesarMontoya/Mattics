@@ -31,3 +31,4 @@ bun-debug.log*
 /playwright/.cache/
 # auth state — contiene cookies/sesión, no commitear
 /playwright/.auth/*.json
+/playwright/.auth/profile/
