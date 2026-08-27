@@ -33,7 +33,6 @@ export default defineConfig({
         },
         storageState: 'playwright/.auth/brilliant.json',
       },
-      dependencies: ['setup'],
     },
   ],
   webServer: {
