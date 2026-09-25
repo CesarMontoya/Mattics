@@ -1,0 +1,140 @@
+---
+export const prerender = false;
+
+import AdminLayout from "@/layouts/AdminLayout.astro";
+import { requireAdminPage } from "@/lib/clases/guard";
+
+const guard = await requireAdminPage(Astro);
+if (!guard) return Astro.redirect("/admin/login", 302);
+
+const filterCourses = Astro.url.searchParams.getAll("curso").filter(Boolean);
+
+const [{ data: courses }, { data: students }] = await Promise.all([
+  guard.service.from("courses").select("id,name").order("name"),
+  guard.service.from("student_links").select("id,token,student_id"),
+]);
+
+const { data: studentRows } = await guard.service
+  .from("students")
+  .select("id,full_name,course_id,courses(id,name)")
+  .order("full_name");
+
+const linksByStudent = new Map<string, { id: string; token: string }>();
+for (const l of (students ?? [])) {
+  if (!linksByStudent.has(l.student_id)) {
+    linksByStudent.set(l.student_id, { id: l.id, token: l.token });
+  }
+}
+
+const visible = (studentRows ?? []).filter((s) =>
+  filterCourses.length === 0 ? true : (s.course_id && filterCourses.includes(s.course_id)),
+);
+
+const courseName = (s: { courses: unknown }) => {
+  const c = Array.isArray(s.courses) ? s.courses[0] : (s.courses as { name?: string } | null);
+  return c?.name ?? "—";
+};
+
+const origin = Astro.url.origin;
+const linkOf = (token: string | undefined) => (token ? `${origin}/ir/${token}` : "");
+const missing = visible.filter((s) => !linksByStudent.get(s.id)).length;
+---
+
+<AdminLayout title="Enlaces estudiantes · Admin Mattics" active="enlaces">
+  <h1 class="text-3xl font-bold mb-2">Enlaces de estudiantes</h1>
+  <p class="text-muted-foreground mb-6">Comparte cada enlace <code>/ir/TOKEN</code> con su estudiante. {missing} sin enlace en la vista actual.</p>
+
+  <form method="GET" class="rounded-xl border border-border bg-card p-5 mb-6">
+    <p class="text-sm font-medium mb-2">Filtrar por curso</p>
+    <div class="flex flex-wrap gap-3 mb-4">
+      {(courses ?? []).map((c) => (
+        <label class="text-sm flex items-center gap-1.5">
+          <input type="checkbox" name="curso" value={c.id} checked={filterCourses.includes(c.id)} />
+          {c.name}
+        </label>
+      ))}
+    </div>
+    <div class="flex flex-wrap gap-2">
+      <button type="submit" class="rounded-lg border border-border px-4 py-2 text-sm">Filtrar</button>
+      <a href="/admin/enlaces-estudiantes" class="rounded-lg border border-border px-4 py-2 text-sm">Limpiar</a>
+    </div>
+  </form>
+
+  <div class="flex flex-wrap gap-2 mb-6">
+    <form method="POST" action="/api/admin/enlaces-estudiantes">
+      <input type="hidden" name="action" value="bulk" />
+      {filterCourses.map((c) => (<input type="hidden" name="curso" value={c} />))}
+      <button type="submit" class="rounded-lg bg-primary text-primary-foreground px-4 py-2 text-sm font-medium">
+        Generar enlaces faltantes ({missing})
+      </button>
+    </form>
+    <button id="export-xlsx" type="button" class="rounded-lg border border-border px-4 py-2 text-sm">
+      Exportar Excel (cursos seleccionados o todos)
+    </button>
+  </div>
+
+  <div class="rounded-xl border border-border overflow-hidden">
+    <table class="w-full text-sm">
+      <thead class="bg-muted">
+        <tr><th class="text-left px-4 py-2">Estudiante</th><th class="text-left px-4 py-2">Curso</th><th class="text-left px-4 py-2">Enlace</th><th class="px-4 py-2"></th></tr>
+      </thead>
+      <tbody>
+        {visible.map((s) => {
+          const link = linksByStudent.get(s.id);
+          const url = linkOf(link?.token);
+          return (
+            <tr class="border-t border-border">
+              <td class="px-4 py-2 font-medium">{s.full_name}</td>
+              <td class="px-4 py-2 text-muted-foreground">{courseName(s)}</td>
+              <td class="px-4 py-2 max-w-xs truncate text-muted-foreground">{url || "—"}</td>
+              <td class="px-4 py-2 text-right whitespace-nowrap">
+                {url && (<button type="button" data-copy={url} class="text-sm text-primary hover:underline mr-3">Copiar</button>)}
+                <form method="POST" action="/api/admin/enlaces-estudiantes" class="inline">
+                  <input type="hidden" name="action" value="regenerate" />
+                  <input type="hidden" name="student_id" value={s.id} />
+                  <button type="submit" onclick="return confirm('¿Regenerar el enlace? El anterior dejará de funcionar.')" class="text-sm text-muted-foreground hover:underline">
+                    {link ? "Regenerar" : "Generar"}
+                  </button>
+                </form>
+              </td>
+            </tr>
+          );
+        })}
+        {visible.length === 0 && (
+          <tr><td colspan="4" class="px-4 py-6 text-center text-muted-foreground">Sin estudiantes en esta vista.</td></tr>
+        )}
+      </tbody>
+    </table>
+  </div>
+
+  <script is:inline define:vars={{ filterCourses }}>
+    document.addEventListener("click", async (e) => {
+      const btn = e.target.closest("[data-copy]");
+      if (!btn) return;
+      try {
+        await navigator.clipboard.writeText(btn.dataset.copy);
+        btn.textContent = "¡Copiado!";
+        setTimeout(() => (btn.textContent = "Copiar"), 1500);
+      } catch {
+        btn.textContent = "Error";
+      }
+    });
+    document.getElementById("export-xlsx")?.addEventListener("click", async () => {
+      const res = await fetch("/api/admin/enlaces/export", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ courseIds: filterCourses }),
+      });
+      if (!res.ok) {
+        alert("No se pudo exportar.");
+        return;
+      }
+      const blob = await res.blob();
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = "enlaces-estudiantes.xlsx";
+      a.click();
+      URL.revokeObjectURL(a.href);
+    });
+  </script>
+</AdminLayout>

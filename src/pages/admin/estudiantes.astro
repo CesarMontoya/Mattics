@@ -1,0 +1,78 @@
+---
+export const prerender = false;
+
+import AdminLayout from "@/layouts/AdminLayout.astro";
+import { requireAdminPage } from "@/lib/clases/guard";
+
+const guard = await requireAdminPage(Astro);
+if (!guard) return Astro.redirect("/admin/login", 302);
+
+const [{ data: courses }, { data: students }] = await Promise.all([
+  guard.service.from("courses").select("id,name").order("name"),
+  guard.service.from("students").select("id,full_name,course_id,created_at,courses(id,name)").order("created_at", { ascending: false }),
+]);
+
+const courseName = (s: { course_id: string | null; courses: unknown }) => {
+  const c = Array.isArray(s.courses) ? s.courses[0] : (s.courses as { name?: string } | null);
+  return c?.name ?? "—";
+};
+---
+
+<AdminLayout title="Estudiantes · Admin Mattics" active="estudiantes">
+  <h1 class="text-3xl font-bold mb-6">Estudiantes</h1>
+
+  <form method="POST" action="/api/admin/estudiantes" class="rounded-xl border border-border bg-card p-5 mb-8 grid gap-3 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
+    <div>
+      <label for="full_name" class="text-sm font-medium block mb-1">Nombre completo</label>
+      <input id="full_name" name="full_name" required maxlength="200" placeholder="Nombre del estudiante"
+        class="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm" />
+    </div>
+    <div>
+      <label for="course_id" class="text-sm font-medium block mb-1">Curso</label>
+      <select id="course_id" name="course_id" class="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm">
+        <option value="">Sin curso</option>
+        {(courses ?? []).map((c) => (<option value={c.id}>{c.name}</option>))}
+      </select>
+    </div>
+    <input type="hidden" name="action" value="create" />
+    <button type="submit" class="rounded-lg bg-primary text-primary-foreground px-4 py-2 text-sm font-medium">Crear</button>
+  </form>
+
+  <div class="rounded-xl border border-border overflow-hidden">
+    <table class="w-full text-sm">
+      <thead class="bg-muted">
+        <tr><th class="text-left px-4 py-2">Estudiante</th><th class="text-left px-4 py-2">Curso</th><th class="px-4 py-2"></th></tr>
+      </thead>
+      <tbody>
+        {(students ?? []).map((s) => (
+          <tr class="border-t border-border">
+            <td class="px-4 py-2">
+              <form method="POST" action="/api/admin/estudiantes" class="flex gap-2 items-center">
+                <input type="hidden" name="action" value="update" />
+                <input type="hidden" name="id" value={s.id} />
+                <input name="full_name" value={s.full_name} maxlength="200" required
+                  class="rounded border border-input bg-background px-2 py-1 text-sm w-48" />
+                <select name="course_id" class="rounded border border-input bg-background px-2 py-1 text-sm">
+                  <option value="" selected={!s.course_id}>Sin curso</option>
+                  {(courses ?? []).map((c) => (<option value={c.id} selected={c.id === s.course_id}>{c.name}</option>))}
+                </select>
+                <button type="submit" class="text-sm text-primary hover:underline">Guardar</button>
+              </form>
+            </td>
+            <td class="px-4 py-2 text-muted-foreground">{courseName(s)}</td>
+            <td class="px-4 py-2 text-right">
+              <form method="POST" action="/api/admin/estudiantes" class="inline">
+                <input type="hidden" name="action" value="delete" />
+                <input type="hidden" name="id" value={s.id} />
+                <button type="submit" onclick="return confirm('¿Eliminar este estudiante?')" class="text-sm text-red-600 hover:underline">Eliminar</button>
+              </form>
+            </td>
+          </tr>
+        ))}
+        {(students ?? []).length === 0 && (
+          <tr><td colspan="3" class="px-4 py-6 text-center text-muted-foreground">Sin estudiantes todavía.</td></tr>
+        )}
+      </tbody>
+    </table>
+  </div>
+</AdminLayout>

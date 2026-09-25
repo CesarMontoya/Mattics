@@ -1,0 +1,46 @@
+---
+export const prerender = false;
+
+import AdminLayout from "@/layouts/AdminLayout.astro";
+import { requireAdminPage } from "@/lib/clases/guard";
+
+const guard = await requireAdminPage(Astro);
+if (!guard) return Astro.redirect("/admin/login", 302);
+const { service } = guard;
+
+const tables = ["courses", "students", "subjects", "subject_meet_links", "schedules", "student_links", "visits", "alerts"] as const;
+const counts: Record<string, number> = {};
+for (const t of tables) {
+  try {
+    const { count } = await service.from(t).select("id", { count: "exact", head: true });
+    counts[t] = count ?? 0;
+  } catch {
+    counts[t] = 0;
+  }
+}
+
+const cards = [
+  { href: "/admin/cursos", title: "Cursos", desc: `${counts.courses ?? 0} cursos`, key: "cursos" },
+  { href: "/admin/estudiantes", title: "Estudiantes", desc: `${counts.students ?? 0} estudiantes`, key: "estudiantes" },
+  { href: "/admin/asignaturas", title: "Asignaturas", desc: `${counts.subjects ?? 0} asignaturas`, key: "asignaturas" },
+  { href: "/admin/enlaces-meet", title: "Enlaces Meet", desc: `${counts.subject_meet_links ?? 0} enlaces`, key: "meet" },
+  { href: "/admin/horarios", title: "Horarios", desc: `${counts.schedules ?? 0} horarios`, key: "horarios" },
+  { href: "/admin/enlaces-estudiantes", title: "Enlaces estudiantes", desc: `${counts.student_links ?? 0} enlaces`, key: "enlaces" },
+  { href: "/admin/telemetria", title: "Telemetría", desc: `${counts.visits ?? 0} visitas`, key: "telemetria" },
+  { href: "/admin/alertas", title: "Alertas", desc: `${counts.alerts ?? 0} alertas`, key: "alertas" },
+  { href: "/admin/asistencia", title: "Asistencia", desc: "Listas y exportaciones", key: "asistencia" },
+];
+---
+
+<AdminLayout title="Panel · Admin Mattics" active="panel">
+  <h1 class="text-3xl font-bold mb-2">Panel de clases virtuales</h1>
+  <p class="text-muted-foreground mb-8">Administra cursos, estudiantes, enlaces, telemetría y asistencia.</p>
+  <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+    {cards.map((c) => (
+      <a href={c.href} class="rounded-xl border border-border bg-card p-6 hover:border-primary transition-colors">
+        <h2 class="font-semibold text-lg">{c.title}</h2>
+        <p class="text-sm text-muted-foreground mt-1">{c.desc}</p>
+      </a>
+    ))}
+  </div>
+</AdminLayout>

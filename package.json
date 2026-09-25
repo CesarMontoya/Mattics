@@ -16,7 +16,9 @@
     "test:all": "playwright test",
     "login": "bun scripts/login.ts",
     "login:brilliant": "bun scripts/login.ts https://brilliant.org/login",
-    "session:check": "bun scripts/use-session.ts"
+    "login:additio": "bun scripts/login-additio.ts",
+    "session:check": "bun scripts/use-session.ts",
+    "session:check:additio": "bun scripts/use-session.ts https://web.additioapp.com/"
   },
   "dependencies": {
     "@astrojs/node": "^10.0.4",
@@ -28,6 +30,8 @@
     "@radix-ui/react-separator": "^1.1.8",
     "@radix-ui/react-slot": "^1.2.4",
     "@radix-ui/react-tooltip": "^1.2.8",
+    "@supabase/ssr": "^0.12.7",
+    "@supabase/supabase-js": "^2.117.1",
     "@tailwindcss/vite": "^4.1.18",
     "@types/react": "^19.2.10",
     "@types/react-dom": "^19.2.3",
@@ -36,13 +40,15 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "jimp": "^1.6.0",
+    "jszip": "^3.10.2",
     "katex": "^0.16.38",
     "lucide-react": "^0.563.0",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
     "react-katex": "^3.1.0",
     "tailwind-merge": "^3.4.0",
-    "tailwindcss": "^4.1.18"
+    "tailwindcss": "^4.1.18",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@playwright/test": "^1.62.1",

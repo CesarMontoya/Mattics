@@ -1,0 +1,77 @@
+---
+export const prerender = false;
+
+import "@/styles/global.css";
+import { requireAdminPage } from "@/lib/clases/guard";
+
+const guard = await requireAdminPage(Astro);
+if (!guard) return Astro.redirect("/admin/login", 302);
+
+const params = Astro.url.searchParams;
+const fCurso = params.get("curso") ?? "";
+const fAsignatura = params.get("asignatura") ?? "";
+const fDia = params.get("dia") ?? "";
+const fClase = params.get("clase") ?? "";
+
+const [{ data: courses }, { data: subjects }] = await Promise.all([
+  guard.service.from("courses").select("id,name"),
+  guard.service.from("subjects").select("id,name"),
+]);
+
+let studentQuery = guard.service.from("students").select("id,full_name,course_id").order("full_name");
+if (fCurso) studentQuery = studentQuery.eq("course_id", fCurso);
+const { data: students } = await studentQuery;
+
+let visitQuery = guard.service.from("visits").select("student_id").limit(2000);
+if (fCurso) visitQuery = visitQuery.eq("resolved_course_id", fCurso);
+if (fAsignatura) visitQuery = visitQuery.eq("resolved_subject_id", fAsignatura);
+if (fClase) visitQuery = visitQuery.eq("resolved_schedule_id", fClase);
+if (fDia) {
+  visitQuery = visitQuery.gte("occurred_at", `${fDia}T00:00:00Z`).lt("occurred_at", `${fDia}T23:59:59.999Z`);
+}
+const { data: visits } = await visitQuery;
+
+const presentIds = new Set((visits ?? []).map((v) => v.student_id).filter(Boolean) as string[]);
+const courseName = (courses ?? []).find((c) => c.id === fCurso)?.name ?? "Todos";
+const subjectName = (subjects ?? []).find((s) => s.id === fAsignatura)?.name ?? "Todas";
+---
+
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Asistencia · Mattics</title>
+    <style>
+      body { font-family: system-ui, sans-serif; margin: 32px; color: #111; }
+      h1 { font-size: 22px; margin-bottom: 4px; }
+      p.meta { color: #555; font-size: 13px; margin-bottom: 20px; }
+      table { width: 100%; border-collapse: collapse; font-size: 14px; }
+      th, td { border: 1px solid #999; padding: 6px 10px; text-align: left; }
+      th { background: #f0f0f0; }
+      .no-print { margin-bottom: 20px; }
+      @media print {
+        .no-print { display: none; }
+        body { margin: 0; }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="no-print">
+      <button onclick="window.print()" style="padding:8px 16px;cursor:pointer;">Imprimir / Guardar como PDF</button>
+    </div>
+    <h1>Lista de asistencia — Mattics</h1>
+    <p class="meta">Curso: {courseName} · Asignatura: {subjectName} · Día: {fDia || "—"} · Clase: {fClase ? fClase.slice(0, 8) : "—"}</p>
+    <table>
+      <thead><tr><th>#</th><th>Estudiante</th><th>Estado</th></tr></thead>
+      <tbody>
+        {(students ?? []).map((s, i) => (
+          <tr>
+            <td>{i + 1}</td>
+            <td>{s.full_name}</td>
+            <td>{presentIds.has(s.id) ? "Presente" : "Ausente"}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </body>
+</html>

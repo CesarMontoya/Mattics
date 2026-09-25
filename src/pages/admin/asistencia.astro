@@ -1,0 +1,113 @@
+---
+export const prerender = false;
+
+import AdminLayout from "@/layouts/AdminLayout.astro";
+import { requireAdminPage } from "@/lib/clases/guard";
+import { shortTime } from "@/lib/clases/admin";
+
+const guard = await requireAdminPage(Astro);
+if (!guard) return Astro.redirect("/admin/login", 302);
+
+const params = Astro.url.searchParams;
+const fCurso = params.get("curso") ?? "";
+const fAsignatura = params.get("asignatura") ?? "";
+const fDia = params.get("dia") ?? "";
+const fClase = params.get("clase") ?? "";
+
+const [{ data: courses }, { data: subjects }, { data: schedules }] = await Promise.all([
+  guard.service.from("courses").select("id,name").order("name"),
+  guard.service.from("subjects").select("id,name").order("name"),
+  guard.service.from("schedules").select("id,course_id,subject_id,weekday,start_time,end_time").order("weekday").order("start_time"),
+]);
+
+// Students in scope
+let studentQuery = guard.service.from("students").select("id,full_name,course_id").order("full_name");
+if (fCurso) studentQuery = studentQuery.eq("course_id", fCurso);
+const { data: students } = await studentQuery;
+
+// Visits in scope: distinct student_id with visits in resolved schedule/day.
+let visitQuery = guard.service.from("visits").select("student_id,resolved_schedule_id").limit(2000);
+if (fCurso) visitQuery = visitQuery.eq("resolved_course_id", fCurso);
+if (fAsignatura) visitQuery = visitQuery.eq("resolved_subject_id", fAsignatura);
+if (fClase) visitQuery = visitQuery.eq("resolved_schedule_id", fClase);
+if (fDia) {
+  visitQuery = visitQuery.gte("occurred_at", `${fDia}T00:00:00Z`).lt("occurred_at", `${fDia}T23:59:59.999Z`);
+}
+const { data: visits } = await visitQuery;
+
+const presentIds = new Set((visits ?? []).map((v) => v.student_id).filter(Boolean) as string[]);
+const present = (students ?? []).filter((s) => presentIds.has(s.id));
+const absent = (students ?? []).filter((s) => !presentIds.has(s.id));
+
+const exportQs = () => {
+  const p = new URLSearchParams();
+  if (fCurso) p.set("curso", fCurso);
+  if (fAsignatura) p.set("asignatura", fAsignatura);
+  if (fDia) p.set("dia", fDia);
+  if (fClase) p.set("clase", fClase);
+  return p.toString();
+};
+const printQs = exportQs();
+---
+
+<AdminLayout title="Asistencia · Admin Mattics" active="asistencia">
+  <h1 class="text-3xl font-bold mb-6">Asistencia</h1>
+  <p class="text-sm text-muted-foreground mb-4">Presente = al menos una visita registrada con los filtros aplicados.</p>
+
+  <form method="GET" class="rounded-xl border border-border bg-card p-5 mb-6 grid gap-3 sm:grid-cols-[1fr_1fr_1fr_1fr_auto] sm:items-end">
+    <div>
+      <label class="text-sm font-medium block mb-1" for="curso">Curso</label>
+      <select id="curso" name="curso" class="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm">
+        <option value="">Todos</option>
+        {(courses ?? []).map((c) => (<option value={c.id} selected={c.id === fCurso}>{c.name}</option>))}
+      </select>
+    </div>
+    <div>
+      <label class="text-sm font-medium block mb-1" for="asignatura">Asignatura</label>
+      <select id="asignatura" name="asignatura" class="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm">
+        <option value="">Todas</option>
+        {(subjects ?? []).map((s) => (<option value={s.id} selected={s.id === fAsignatura}>{s.name}</option>))}
+      </select>
+    </div>
+    <div>
+      <label class="text-sm font-medium block mb-1" for="dia">Día</label>
+      <input id="dia" name="dia" type="date" value={fDia} class="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm" />
+    </div>
+    <div>
+      <label class="text-sm font-medium block mb-1" for="clase">Clase</label>
+      <select id="clase" name="clase" class="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm">
+        <option value="">Todas</option>
+        {(schedules ?? []).map((s) => (
+          <option value={s.id} selected={s.id === fClase}>d{s.weekday} {shortTime(s.start_time)}–{shortTime(s.end_time)}</option>
+        ))}
+      </select>
+    </div>
+    <div class="flex gap-2">
+      <button type="submit" class="rounded-lg bg-primary text-primary-foreground px-4 py-2 text-sm font-medium">Filtrar</button>
+      <a href="/admin/asistencia" class="rounded-lg border border-border px-4 py-2 text-sm">Limpiar</a>
+    </div>
+  </form>
+
+  <div class="flex flex-wrap gap-2 mb-6">
+    <a href={`/api/admin/asistencia/export?format=xlsx&${exportQs()}`} class="rounded-lg border border-border px-4 py-2 text-sm">Exportar Excel</a>
+    <a href={`/api/admin/asistencia/export?format=md&${exportQs()}`} class="rounded-lg border border-border px-4 py-2 text-sm">Exportar Markdown</a>
+    <a href={`/admin/asistencia/print?${printQs}`} target="_blank" class="rounded-lg bg-primary text-primary-foreground px-4 py-2 text-sm font-medium">Vista imprimible / PDF</a>
+  </div>
+
+  <div class="grid gap-6 md:grid-cols-2">
+    <div class="rounded-xl border border-green-200 overflow-hidden">
+      <h2 class="bg-green-50 px-4 py-2 font-semibold text-green-800">Presentes ({present.length})</h2>
+      <ul class="divide-y divide-border">
+        {present.map((s) => (<li class="px-4 py-2 text-sm">{s.full_name}</li>))}
+        {present.length === 0 && (<li class="px-4 py-4 text-sm text-muted-foreground">Nadie registrado.</li>)}
+      </ul>
+    </div>
+    <div class="rounded-xl border border-border overflow-hidden">
+      <h2 class="bg-muted px-4 py-2 font-semibold">Ausentes ({absent.length})</h2>
+      <ul class="divide-y divide-border">
+        {absent.map((s) => (<li class="px-4 py-2 text-sm">{s.full_name}</li>))}
+        {absent.length === 0 && (<li class="px-4 py-4 text-sm text-muted-foreground">Sin ausentes.</li>)}
+      </ul>
+    </div>
+  </div>
+</AdminLayout>

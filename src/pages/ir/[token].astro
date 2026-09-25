@@ -1,0 +1,230 @@
+---
+export const prerender = false;
+
+import Layout from "@/layouts/Layout.astro";
+import "@/styles/global.css";
+import { createSupabaseServiceRoleClient } from "@/lib/supabase/server";
+import { resolveScheduleFor, WEEKDAY_NAMES_ES, type Resolution } from "@/lib/clases/resolve";
+import { getClientIp, fetchIpGeo, parseUserAgent } from "@/lib/clases/telemetry";
+
+type LinkContext = {
+  studentLinkId: string;
+  studentId: string;
+  studentName: string;
+  courseId: string | null;
+  courseName: string | null;
+};
+
+const token = (Astro.params.token ?? "").trim();
+
+let invalid = false;
+let context: LinkContext | null = null;
+let resolution: Resolution | null = null;
+
+function shortTime(t: string | null | undefined): string {
+  if (!t) return "";
+  return t.slice(0, 5);
+}
+
+function weekdayEs(weekday: number): string {
+  return WEEKDAY_NAMES_ES[weekday] ?? "";
+}
+
+// --- Server-side lookup + tracking (service-role only, never leaks Meet URL) ---
+if (!token) {
+  invalid = true;
+} else {
+  try {
+    const supabase = createSupabaseServiceRoleClient();
+
+    const { data: link, error: linkError } = await supabase
+      .from("student_links")
+      .select("id,student_id")
+      .eq("token", token)
+      .maybeSingle();
+
+    if (linkError || !link) {
+      invalid = true;
+    } else {
+      const { data: student, error: studentError } = await supabase
+        .from("students")
+        .select("id,full_name,course_id,courses(id,name)")
+        .eq("id", link.student_id)
+        .maybeSingle();
+
+      if (studentError || !student) {
+        invalid = true;
+      } else {
+        const course = Array.isArray(student.courses) ? student.courses[0] : student.courses;
+        context = {
+          studentLinkId: link.id as string,
+          studentId: student.id as string,
+          studentName: (student.full_name as string) ?? "Estudiante",
+          courseId: (student.course_id as string | null) ?? (course?.id as string | undefined) ?? null,
+          courseName: (course?.name as string | undefined) ?? null,
+        };
+
+        // Resolve current/next class in America/Bogota.
+        if (context.courseId) {
+          try {
+            resolution = await resolveScheduleFor(context.courseId, new Date());
+          } catch (err) {
+            console.error("[ir] resolveScheduleFor failed:", err);
+            resolution = null;
+          }
+        }
+
+        // Best-effort visit tracking — must never block the redirect/waiting page.
+        try {
+          const headers = Astro.request.headers;
+          const ip = getClientIp(Astro.clientAddress, headers);
+          const geo = await fetchIpGeo(ip);
+          const uaRaw = headers.get("user-agent");
+          const uaShort = parseUserAgent(uaRaw);
+          const nowIso = new Date().toISOString();
+
+          const resolvedCurrent = resolution?.schedule ?? resolution?.nextClass?.schedule ?? null;
+          const resolvedSubjectId =
+            resolution?.subject?.id ?? resolution?.nextClass?.subject?.id ?? null;
+
+          // Alert history is read BEFORE inserting the current visit, so the
+          // comparison is strictly against previous visits (last 30 days).
+          const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+          let priorIps: string[] = [];
+          try {
+            const { data: recent } = await supabase
+              .from("visits")
+              .select("ip")
+              .eq("student_link_id", context.studentLinkId)
+              .gte("occurred_at", thirtyDaysAgo)
+              .order("occurred_at", { ascending: false })
+              .limit(50);
+            priorIps = [
+              ...new Set(
+                ((recent ?? []) as Array<{ ip: string | null }>)
+                  .map((r) => r.ip)
+                  .filter((v): v is string => typeof v === "string" && v.length > 0),
+              ),
+            ];
+          } catch (err) {
+            console.error("[ir] recent visits lookup failed:", err);
+          }
+
+          const { data: visit, error: visitError } = await supabase
+            .from("visits")
+            .insert({
+              student_link_id: context.studentLinkId,
+              student_id: context.studentId,
+              occurred_at: nowIso,
+              ip,
+              ip_city: geo.city,
+              ip_country: geo.country,
+              user_agent: uaRaw ?? uaShort,
+              resolved_course_id: context.courseId,
+              resolved_subject_id: resolvedSubjectId,
+              resolved_schedule_id: resolvedCurrent?.id ?? null,
+            })
+            .select("id")
+            .single();
+
+          if (!visitError && visit) {
+            if (ip && priorIps.length > 0) {
+              const alert = priorIps.includes(ip)
+                ? { type: "same_ip_repeat", severity: "moderate" }
+                : { type: "different_ip", severity: "high" };
+              const { error: alertError } = await supabase.from("alerts").insert({
+                visit_id: (visit as { id: string }).id,
+                type: alert.type,
+                severity: alert.severity,
+                details: { ip, previousIps: priorIps, userAgent: uaShort },
+              });
+              if (alertError) console.error("[ir] alert insert failed:", alertError.message);
+            }
+          } else if (visitError) {
+            console.error("[ir] visit insert failed:", visitError.message);
+          }
+        } catch (err) {
+          console.error("[ir] telemetry failed:", err);
+        }
+      }
+    }
+  } catch (err) {
+    console.error("[ir] lookup failed:", err);
+    invalid = true;
+  }
+}
+
+// Redirect only when a live class with a Meet URL was resolved.
+if (!invalid && resolution?.meetUrl) {
+  return Astro.redirect(resolution.meetUrl, 302);
+}
+
+const pageTitle = invalid ? "Enlace no válido | Mattics" : "Tu clase virtual | Mattics";
+const next = resolution?.nextClass ?? null;
+---
+
+<Layout title={pageTitle}>
+  <main class="min-h-screen bg-background flex items-center justify-center px-6 py-16">
+    {invalid ? (
+      <section class="w-full max-w-lg text-center">
+        <p class="text-sm font-medium text-muted-foreground mb-3">Mattics · Clases virtuales</p>
+        <h1 class="heading-1 mb-4">Este enlace no es válido</h1>
+        <p class="text-muted-foreground leading-relaxed mb-4">
+          El enlace que usaste no existe o fue desactivado. Pide a tu docente un enlace nuevo
+          e inténtalo de nuevo.
+        </p>
+        <p class="text-sm text-muted-foreground leading-relaxed mb-8">
+          Aviso de privacidad (Ley 1581 de 2012): los accesos válidos registran IP, ciudad
+          aproximada y navegador para controlar el acceso. Más información en nuestra{" "}
+          <a href="/politica-de-privacidad" class="text-primary hover:underline font-medium">
+            política de privacidad
+          </a>.
+        </p>
+        <a href="/" class="text-primary hover:underline font-medium">← Volver al inicio</a>
+      </section>
+    ) : (
+      <section class="w-full max-w-lg">
+        <p class="text-sm font-medium text-muted-foreground mb-3">Mattics · Clases virtuales</p>
+        <h1 class="heading-1 mb-4">Hola, {context?.studentName ?? "estudiante"}</h1>
+        <p class="text-muted-foreground leading-relaxed mb-2">
+          {context?.courseName
+            ? `Curso ${context.courseName}: en este momento no hay una clase en vivo.`
+            : "En este momento no hay una clase en vivo."}
+        </p>
+        <p class="text-muted-foreground leading-relaxed mb-8">
+          Quédate en esta página: cuando tu clase comience, este mismo enlace te llevará
+          automáticamente a la videollamada.
+        </p>
+
+        <div class="rounded-xl border border-border bg-card p-6 mb-8">
+          <h2 class="font-semibold mb-2">Próxima clase</h2>
+          {next ? (
+            <p class="text-foreground/80">
+              <span class="font-medium">{next.subject?.name ?? "Clase"}</span>
+              {" · "}
+              <span class="capitalize">{weekdayEs(next.schedule.weekday)}</span>
+              {` ${shortTime(next.schedule.start_time)} – ${shortTime(next.schedule.end_time)}`}
+            </p>
+          ) : (
+            <p class="text-muted-foreground">Aún no hay una próxima clase programada. Tu docente te avisará.</p>
+          )}
+        </div>
+
+        <aside class="rounded-xl bg-muted p-5 text-sm text-muted-foreground leading-relaxed mb-8">
+          <h2 class="font-semibold text-foreground mb-1">Aviso de privacidad — Ley 1581 de 2012</h2>
+          <p>
+            Al abrir este enlace registramos tu dirección IP, tu ciudad aproximada
+            (no usamos GPS ni tu ubicación exacta) y el navegador que usas, con la única
+            finalidad de controlar el acceso a la clase virtual y proteger a los estudiantes.
+            Puedes conocer más en nuestra{" "}
+            <a href="/politica-de-privacidad" class="text-primary hover:underline font-medium">
+              política de privacidad
+            </a>.
+          </p>
+        </aside>
+
+        <a href="/" class="text-primary hover:underline font-medium">← Volver al inicio</a>
+      </section>
+    )}
+  </main>
+</Layout>

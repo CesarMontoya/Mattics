@@ -1,0 +1,58 @@
+---
+import Layout from "@/layouts/Layout.astro";
+import "@/styles/global.css";
+
+interface Props {
+  title: string;
+  active?: string;
+}
+
+const { title, active = "" } = Astro.props;
+
+const links = [
+  { href: "/admin", label: "Panel", key: "panel" },
+  { href: "/admin/cursos", label: "Cursos", key: "cursos" },
+  { href: "/admin/estudiantes", label: "Estudiantes", key: "estudiantes" },
+  { href: "/admin/asignaturas", label: "Asignaturas", key: "asignaturas" },
+  { href: "/admin/enlaces-meet", label: "Enlaces Meet", key: "meet" },
+  { href: "/admin/horarios", label: "Horarios", key: "horarios" },
+  { href: "/admin/enlaces-estudiantes", label: "Enlaces estudiantes", key: "enlaces" },
+  { href: "/admin/telemetria", label: "Telemetría", key: "telemetria" },
+  { href: "/admin/alertas", label: "Alertas", key: "alertas" },
+  { href: "/admin/asistencia", label: "Asistencia", key: "asistencia" },
+  { href: "/admin/reportes-compartidos", label: "Reportes compartidos", key: "reportes" },
+];
+---
+
+<Layout title={title}>
+  <div class="min-h-screen bg-background">
+    <header class="border-b border-border bg-card">
+      <div class="max-w-6xl mx-auto px-6 py-4 flex flex-wrap items-center gap-4 justify-between">
+        <a href="/admin" class="font-bold text-lg">Mattics · Admin</a>
+        <form method="POST" action="/api/admin/logout">
+          <button type="submit" class="text-sm text-muted-foreground hover:text-foreground hover:underline">
+            Cerrar sesión
+          </button>
+        </form>
+      </div>
+      <nav class="max-w-6xl mx-auto px-6 pb-4 flex flex-wrap gap-2">
+        {links.map((l) => (
+          <a
+            href={l.href}
+            class:list={[
+              "text-sm px-3 py-1.5 rounded-full border",
+              active === l.key
+                ? "bg-primary text-primary-foreground border-primary"
+                : "border-border text-muted-foreground hover:text-foreground",
+            ]}
+          >
+            {l.label}
+          </a>
+        ))}
+      </nav>
+    </header>
+    <main class="max-w-6xl mx-auto px-6 py-8">
+      <slot />
+    </main>
+  </div>
+</Layout>

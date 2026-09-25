@@ -1,0 +1,259 @@
+---
+export const prerender = false;
+
+import Layout from "@/layouts/Layout.astro";
+import "@/styles/global.css";
+import { createSupabaseServiceRoleClient } from "@/lib/supabase/server";
+
+const token = (Astro.params.token ?? "").trim();
+
+type InvalidReason = "not_found" | "revoked" | "expired" | null;
+
+let invalidReason: InvalidReason = null;
+let scopeCourseId: string | null = null;
+let scopeSubjectId: string | null = null;
+let scopeCourseName: string | null = null;
+let scopeSubjectName: string | null = null;
+let scopeExpiresAt: string | null = null;
+
+let totalPresent = 0;
+let presentNames: string[] = [];
+let byCourse: Array<{ name: string; count: number }> = [];
+let bySubject: Array<{ name: string; count: number }> = [];
+let byDay: Array<{ day: string; count: number }> = [];
+
+if (!token) {
+  invalidReason = "not_found";
+} else {
+  try {
+    const supabase = createSupabaseServiceRoleClient();
+
+    const { data: report, error: reportError } = await supabase
+      .from("shared_reports")
+      .select("scope_subject_id,scope_course_id,expires_at,revoked")
+      .eq("token", token)
+      .maybeSingle();
+
+    if (reportError || !report) {
+      invalidReason = "not_found";
+    } else if (report.revoked) {
+      invalidReason = "revoked";
+    } else if (report.expires_at && new Date(report.expires_at).getTime() <= Date.now()) {
+      invalidReason = "expired";
+    } else {
+      scopeCourseId = (report.scope_course_id as string | null) ?? null;
+      scopeSubjectId = (report.scope_subject_id as string | null) ?? null;
+      scopeExpiresAt = (report.expires_at as string | null) ?? null;
+
+      // Scope names (for the header only).
+      if (scopeCourseId) {
+        const { data: c } = await supabase.from("courses").select("name").eq("id", scopeCourseId).maybeSingle();
+        scopeCourseName = (c?.name as string | undefined) ?? null;
+      }
+      if (scopeSubjectId) {
+        const { data: s } = await supabase.from("subjects").select("name").eq("id", scopeSubjectId).maybeSingle();
+        scopeSubjectName = (s?.name as string | undefined) ?? null;
+      }
+
+      // Students in scope (names only — no links, no contact data).
+      let studentQuery = supabase.from("students").select("id,full_name,course_id").order("full_name").limit(2000);
+      if (scopeCourseId) studentQuery = studentQuery.eq("course_id", scopeCourseId);
+      const { data: students } = await studentQuery;
+
+      // Visits in scope: ONLY attribution columns. Never select ip, ip_city,
+      // ip_country, user_agent, student_link_id. Never touch alerts or Meet links.
+      let visitQuery = supabase
+        .from("visits")
+        .select("student_id,resolved_course_id,resolved_subject_id,occurred_at")
+        .order("occurred_at", { ascending: false })
+        .limit(2000);
+      if (scopeCourseId) visitQuery = visitQuery.eq("resolved_course_id", scopeCourseId);
+      if (scopeSubjectId) visitQuery = visitQuery.eq("resolved_subject_id", scopeSubjectId);
+      const { data: visits } = await visitQuery;
+
+      const studentById = new Map<string, { name: string; courseId: string | null }>();
+      for (const s of (students ?? [])) {
+        studentById.set(s.id as string, {
+          name: (s.full_name as string) ?? "—",
+          courseId: (s.course_id as string | null) ?? null,
+        });
+      }
+
+      const presentIds = new Set<string>();
+      for (const v of (visits ?? [])) {
+        const sid = v.student_id as string | null;
+        if (sid) presentIds.add(sid);
+      }
+      totalPresent = presentIds.size;
+      presentNames = [...presentIds]
+        .map((id) => studentById.get(id)?.name ?? "Estudiante")
+        .sort((a, b) => a.localeCompare(b, "es"));
+
+      // Counts by course: distinct present students per course.
+      const [{ data: allCourses }, { data: allSubjects }] = await Promise.all([
+        supabase.from("courses").select("id,name").order("name"),
+        supabase.from("subjects").select("id,name").order("name"),
+      ]);
+      const courseNameOf = (id: string | null) =>
+        (allCourses ?? []).find((c) => c.id === id)?.name ?? "Sin curso";
+      const subjectNameOf = (id: string | null) =>
+        (allSubjects ?? []).find((s) => s.id === id)?.name ?? "Sin asignatura";
+
+      const courseBuckets = new Map<string | null, Set<string>>();
+      const subjectBuckets = new Map<string | null, Set<string>>();
+      const dayBuckets = new Map<string, number>();
+      for (const v of (visits ?? [])) {
+        const sid = v.student_id as string | null;
+        if (!sid) continue;
+        const cid = (v.resolved_course_id as string | null) ?? studentById.get(sid)?.courseId ?? null;
+        const subid = v.resolved_subject_id as string | null;
+        if (!courseBuckets.has(cid)) courseBuckets.set(cid, new Set());
+        courseBuckets.get(cid)!.add(sid);
+        if (!subjectBuckets.has(subid)) subjectBuckets.set(subid, new Set());
+        subjectBuckets.get(subid)!.add(sid);
+        const day = String(v.occurred_at ?? "").slice(0, 10);
+        if (day) dayBuckets.set(day, (dayBuckets.get(day) ?? 0) + 1);
+      }
+      byCourse = [...courseBuckets.entries()]
+        .map(([id, set]) => ({ name: courseNameOf(id), count: set.size }))
+        .sort((a, b) => b.count - a.count);
+      bySubject = [...subjectBuckets.entries()]
+        .map(([id, set]) => ({ name: subjectNameOf(id), count: set.size }))
+        .sort((a, b) => b.count - a.count);
+      byDay = [...dayBuckets.entries()]
+        .map(([day, count]) => ({ day, count }))
+        .sort((a, b) => (a.day < b.day ? 1 : -1))
+        .slice(0, 30);
+    }
+  } catch (err) {
+    console.error("[r] lookup failed:", err);
+    invalidReason = "not_found";
+  }
+}
+
+const pageTitle = invalidReason ? "Reporte no disponible | Mattics" : "Reporte de asistencia | Mattics";
+const invalidTitle =
+  invalidReason === "revoked"
+    ? "Este reporte fue revocado"
+    : invalidReason === "expired"
+      ? "Este reporte venció"
+      : "Este reporte no existe";
+const invalidMsg =
+  invalidReason === "revoked"
+    ? "El docente o el administrador desactivó este enlace. Pide un enlace nuevo si lo necesitas."
+    : invalidReason === "expired"
+      ? "Este enlace superó su fecha de vigencia. Pide a tu docente un enlace vigente."
+      : "El enlace que usaste no existe o fue desactivado. Verifica la dirección e inténtalo de nuevo.";
+
+const scopeLabel = [
+  scopeSubjectName ?? "Todas las asignaturas",
+  scopeCourseName ?? "Todos los cursos",
+].join(" · ");
+---
+
+<Layout title={pageTitle}>
+  <div slot="head">
+    <meta name="robots" content="noindex,nofollow" />
+    <meta name="description" content="Reporte compartido de asistencia a clases virtuales." />
+  </div>
+
+  <main class="min-h-screen bg-background px-6 py-16">
+    {invalidReason ? (
+      <section class="w-full max-w-lg mx-auto text-center">
+        <p class="text-sm font-medium text-muted-foreground mb-3">Mattics · Clases virtuales</p>
+        <h1 class="heading-1 mb-4">{invalidTitle}</h1>
+        <p class="text-muted-foreground leading-relaxed mb-8">{invalidMsg}</p>
+        <p class="text-sm text-muted-foreground leading-relaxed mb-8">
+          Mattics protege los datos personales según la Ley 1581 de 2012. Conoce más en nuestra{" "}
+          <a href="/politica-de-privacidad" class="text-primary hover:underline font-medium">
+            política de privacidad
+          </a>.
+        </p>
+        <a href="/" class="text-primary hover:underline font-medium">← Volver al inicio</a>
+      </section>
+    ) : (
+      <section class="w-full max-w-3xl mx-auto">
+        <p class="text-sm font-medium text-muted-foreground mb-3">Mattics · Reporte compartido</p>
+        <h1 class="heading-1 mb-2">Asistencia</h1>
+        <p class="text-muted-foreground mb-1">Alcance: {scopeLabel}</p>
+        {scopeExpiresAt && (
+          <p class="text-sm text-muted-foreground mb-6">
+            Vigente hasta el {new Date(scopeExpiresAt).toLocaleDateString("es-CO")}.
+          </p>
+        )}
+
+        <div class="rounded-xl border border-border bg-card p-6 mb-6">
+          <p class="text-sm text-muted-foreground">Estudiantes presentes (distintos)</p>
+          <p class="text-4xl font-bold">{totalPresent}</p>
+        </div>
+
+        <div class="grid gap-6 md:grid-cols-2 mb-6">
+          <div class="rounded-xl border border-border overflow-hidden">
+            <h2 class="bg-muted px-4 py-2 font-semibold">Por curso</h2>
+            <ul class="divide-y divide-border">
+              {byCourse.map((r) => (
+                <li class="px-4 py-2 text-sm flex justify-between gap-3">
+                  <span>{r.name}</span>
+                  <span class="font-semibold">{r.count}</span>
+                </li>
+              ))}
+              {byCourse.length === 0 && (
+                <li class="px-4 py-4 text-sm text-muted-foreground">Sin registros.</li>
+              )}
+            </ul>
+          </div>
+          <div class="rounded-xl border border-border overflow-hidden">
+            <h2 class="bg-muted px-4 py-2 font-semibold">Por asignatura</h2>
+            <ul class="divide-y divide-border">
+              {bySubject.map((r) => (
+                <li class="px-4 py-2 text-sm flex justify-between gap-3">
+                  <span>{r.name}</span>
+                  <span class="font-semibold">{r.count}</span>
+                </li>
+              ))}
+              {bySubject.length === 0 && (
+                <li class="px-4 py-4 text-sm text-muted-foreground">Sin registros.</li>
+              )}
+            </ul>
+          </div>
+        </div>
+
+        <div class="rounded-xl border border-border overflow-hidden mb-6">
+          <h2 class="bg-muted px-4 py-2 font-semibold">Por día (visitas)</h2>
+          <ul class="divide-y divide-border">
+            {byDay.map((r) => (
+              <li class="px-4 py-2 text-sm flex justify-between gap-3">
+                <span>{r.day}</span>
+                <span class="font-semibold">{r.count}</span>
+              </li>
+            ))}
+            {byDay.length === 0 && (
+              <li class="px-4 py-4 text-sm text-muted-foreground">Sin registros.</li>
+            )}
+          </ul>
+        </div>
+
+        <div class="rounded-xl border border-border overflow-hidden mb-8">
+          <h2 class="bg-muted px-4 py-2 font-semibold">Presentes ({presentNames.length})</h2>
+          <ul class="divide-y divide-border">
+            {presentNames.map((n) => (<li class="px-4 py-2 text-sm">{n}</li>))}
+            {presentNames.length === 0 && (
+              <li class="px-4 py-4 text-sm text-muted-foreground">Nadie registrado en este alcance.</li>
+            )}
+          </ul>
+        </div>
+
+        <aside class="rounded-xl bg-muted p-5 text-sm text-muted-foreground leading-relaxed">
+          <h2 class="font-semibold text-foreground mb-1">Aviso de privacidad</h2>
+          <p>
+            Este reporte muestra únicamente asistencia agregada. No incluye direcciones IP,
+            ubicaciones, enlaces personales ni enlaces de videollamada. Más información en nuestra{" "}
+            <a href="/politica-de-privacidad" class="text-primary hover:underline font-medium">
+              política de privacidad
+            </a>.
+          </p>
+        </aside>
+      </section>
+    )}
+  </main>
+</Layout>

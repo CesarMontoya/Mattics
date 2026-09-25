@@ -1,0 +1,73 @@
+---
+export const prerender = false;
+
+import AdminLayout from "@/layouts/AdminLayout.astro";
+import { requireAdminPage } from "@/lib/clases/guard";
+
+const guard = await requireAdminPage(Astro);
+if (!guard) return Astro.redirect("/admin/login", 302);
+
+const [{ data: subjects }, { data: links }] = await Promise.all([
+  guard.service.from("subjects").select("id,name").order("name"),
+  guard.service.from("subject_meet_links").select("id,url,label,subject_id,created_at,subjects(id,name)").order("created_at", { ascending: false }),
+]);
+
+const subjectName = (l: { subjects: unknown }) => {
+  const s = Array.isArray(l.subjects) ? l.subjects[0] : (l.subjects as { name?: string } | null);
+  return s?.name ?? "—";
+};
+---
+
+<AdminLayout title="Enlaces Meet · Admin Mattics" active="meet">
+  <h1 class="text-3xl font-bold mb-6">Enlaces Meet</h1>
+  <p class="text-sm text-muted-foreground mb-4">Solo se aceptan URL que comiencen con <code>https://meet.google.com/</code>.</p>
+
+  <form method="POST" action="/api/admin/enlaces-meet" class="rounded-xl border border-border bg-card p-5 mb-8 grid gap-3 sm:grid-cols-[1fr_2fr_1fr_auto] sm:items-end">
+    <div>
+      <label for="subject_id" class="text-sm font-medium block mb-1">Asignatura</label>
+      <select id="subject_id" name="subject_id" required class="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm">
+        <option value="">Seleccionar…</option>
+        {(subjects ?? []).map((s) => (<option value={s.id}>{s.name}</option>))}
+      </select>
+    </div>
+    <div>
+      <label for="url" class="text-sm font-medium block mb-1">URL de Meet</label>
+      <input id="url" name="url" type="url" required placeholder="https://meet.google.com/xxx-xxxx-xxx"
+        pattern="https://meet\\.google\\.com/.*" class="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm" />
+    </div>
+    <div>
+      <label for="label" class="text-sm font-medium block mb-1">Etiqueta (opcional)</label>
+      <input id="label" name="label" maxlength="100" placeholder="Grupo A"
+        class="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm" />
+    </div>
+    <input type="hidden" name="action" value="create" />
+    <button type="submit" class="rounded-lg bg-primary text-primary-foreground px-4 py-2 text-sm font-medium">Crear</button>
+  </form>
+
+  <div class="rounded-xl border border-border overflow-hidden">
+    <table class="w-full text-sm">
+      <thead class="bg-muted">
+        <tr><th class="text-left px-4 py-2">Asignatura</th><th class="text-left px-4 py-2">URL</th><th class="text-left px-4 py-2">Etiqueta</th><th class="px-4 py-2"></th></tr>
+      </thead>
+      <tbody>
+        {(links ?? []).map((l) => (
+          <tr class="border-t border-border">
+            <td class="px-4 py-2 font-medium">{subjectName(l)}</td>
+            <td class="px-4 py-2 max-w-xs truncate text-muted-foreground">{l.url}</td>
+            <td class="px-4 py-2 text-muted-foreground">{l.label ?? "—"}</td>
+            <td class="px-4 py-2 text-right">
+              <form method="POST" action="/api/admin/enlaces-meet" class="inline">
+                <input type="hidden" name="action" value="delete" />
+                <input type="hidden" name="id" value={l.id} />
+                <button type="submit" onclick="return confirm('¿Eliminar este enlace?')" class="text-sm text-red-600 hover:underline">Eliminar</button>
+              </form>
+            </td>
+          </tr>
+        ))}
+        {(links ?? []).length === 0 && (
+          <tr><td colspan="4" class="px-4 py-6 text-center text-muted-foreground">Sin enlaces todavía.</td></tr>
+        )}
+      </tbody>
+    </table>
+  </div>
+</AdminLayout>

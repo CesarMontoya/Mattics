@@ -1,0 +1,72 @@
+---
+export const prerender = false;
+
+import Layout from "@/layouts/Layout.astro";
+import "@/styles/global.css";
+import { createSupabaseServerClient } from "@/lib/clases/guard";
+
+if (Astro.request.method === "GET") {
+  const supabase = createSupabaseServerClient({
+    cookies: Astro.cookies,
+    headers: Astro.request.headers,
+  });
+  const { data: { user } } = await supabase.auth.getUser();
+  if (user) return Astro.redirect("/admin", 302);
+}
+
+let error: string | null = null;
+
+if (Astro.request.method === "POST") {
+  const form = await Astro.request.formData();
+  const email = String(form.get("email") ?? "").trim();
+  const password = String(form.get("password") ?? "");
+  if (!email || !password) {
+    error = "Ingresa correo y contraseña.";
+  } else {
+    const supabase = createSupabaseServerClient({
+      cookies: Astro.cookies,
+      headers: Astro.request.headers,
+    });
+    const { error: signInError } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+    if (signInError) {
+      error = `No se pudo ingresar: ${signInError.message}`;
+    } else {
+      return Astro.redirect("/admin", 302);
+    }
+  }
+}
+---
+
+<Layout title="Ingresar · Admin Mattics">
+  <main class="min-h-screen bg-background flex items-center justify-center px-6">
+    <section class="w-full max-w-sm rounded-xl border border-border bg-card p-8">
+      <h1 class="text-2xl font-bold mb-1">Admin Mattics</h1>
+      <p class="text-sm text-muted-foreground mb-6">Ingresa con tu cuenta de administrador.</p>
+      {error && (
+        <p class="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2 mb-4">{error}</p>
+      )}
+      <form method="POST" class="space-y-4">
+        <div>
+          <label for="email" class="text-sm font-medium block mb-1">Correo</label>
+          <input
+            id="email" name="email" type="email" required autocomplete="email"
+            class="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm"
+          />
+        </div>
+        <div>
+          <label for="password" class="text-sm font-medium block mb-1">Contraseña</label>
+          <input
+            id="password" name="password" type="password" required autocomplete="current-password"
+            class="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm"
+          />
+        </div>
+        <button type="submit" class="w-full rounded-lg bg-primary text-primary-foreground py-2 text-sm font-medium">
+          Ingresar
+        </button>
+      </form>
+    </section>
+  </main>
+</Layout>

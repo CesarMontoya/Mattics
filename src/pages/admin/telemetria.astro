@@ -1,0 +1,144 @@
+---
+export const prerender = false;
+
+import AdminLayout from "@/layouts/AdminLayout.astro";
+import { requireAdminPage } from "@/lib/clases/guard";
+import { shortTime } from "@/lib/clases/admin";
+
+const guard = await requireAdminPage(Astro);
+if (!guard) return Astro.redirect("/admin/login", 302);
+
+const params = Astro.url.searchParams;
+const fCurso = params.get("curso") ?? "";
+const fAsignatura = params.get("asignatura") ?? "";
+const fDia = params.get("dia") ?? "";
+const fClase = params.get("clase") ?? "";
+const page = Math.max(0, Number(params.get("page") ?? "0") || 0);
+const LIMIT = 200;
+
+const [{ data: courses }, { data: subjects }, { data: schedules }] = await Promise.all([
+  guard.service.from("courses").select("id,name").order("name"),
+  guard.service.from("subjects").select("id,name").order("name"),
+  guard.service.from("schedules").select("id,course_id,subject_id,weekday,start_time,end_time").order("weekday").order("start_time"),
+]);
+
+let query = guard.service
+  .from("visits")
+  .select("id,occurred_at,ip,ip_city,user_agent,student_id,resolved_course_id,resolved_subject_id,resolved_schedule_id,students(id,full_name),courses:resolved_course_id(id,name),subjects:resolved_subject_id(id,name)", { count: "exact" })
+  .order("occurred_at", { ascending: false })
+  .range(page * LIMIT, page * LIMIT + LIMIT - 1);
+
+if (fCurso) query = query.eq("resolved_course_id", fCurso);
+if (fAsignatura) query = query.eq("resolved_subject_id", fAsignatura);
+if (fClase) query = query.eq("resolved_schedule_id", fClase);
+if (fDia) {
+  query = query.gte("occurred_at", `${fDia}T00:00:00Z`).lt("occurred_at", `${fDia}T23:59:59.999Z`);
+}
+
+const { data: visitsRaw, count } = await query;
+
+function firstOf(v: unknown) {
+  return Array.isArray(v) ? v[0] : (v as any);
+}
+
+function schedLabel(id: unknown) {
+  if (typeof id !== "string" || !id) return "—";
+  const s = (schedules ?? []).find((x) => x.id === id);
+  return s ? `d${s.weekday} ${shortTime(s.start_time)}–${shortTime(s.end_time)}` : id.slice(0, 8);
+}
+
+const rows = ((visitsRaw ?? []) as any[]).map((v) => ({
+  hora: v.occurred_at ? new Date(v.occurred_at).toLocaleString("es-CO") : "—",
+  estudiante: firstOf(v.students)?.full_name ?? "—",
+  curso: firstOf(v.courses)?.name ?? "—",
+  asignatura: firstOf(v.subjects)?.name ?? "—",
+  clase: schedLabel(v.resolved_schedule_id),
+  ip: v.ip ?? "—",
+  ciudad: v.ip_city ?? "—",
+}));
+
+function qs(pageNum: number) {
+  const p = new URLSearchParams();
+  if (fCurso) p.set("curso", fCurso);
+  if (fAsignatura) p.set("asignatura", fAsignatura);
+  if (fDia) p.set("dia", fDia);
+  if (fClase) p.set("clase", fClase);
+  p.set("page", String(pageNum));
+  return `?${p.toString()}`;
+}
+
+const total = count ?? 0;
+---
+
+<AdminLayout title="Telemetría · Admin Mattics" active="telemetria">
+  <h1 class="text-3xl font-bold mb-6">Telemetría de visitas</h1>
+
+  <form method="GET" class="rounded-xl border border-border bg-card p-5 mb-6 grid gap-3 sm:grid-cols-[1fr_1fr_1fr_1fr_auto] sm:items-end">
+    <div>
+      <label class="text-sm font-medium block mb-1" for="curso">Curso</label>
+      <select id="curso" name="curso" class="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm">
+        <option value="">Todos</option>
+        {(courses ?? []).map((c) => (<option value={c.id} selected={c.id === fCurso}>{c.name}</option>))}
+      </select>
+    </div>
+    <div>
+      <label class="text-sm font-medium block mb-1" for="asignatura">Asignatura</label>
+      <select id="asignatura" name="asignatura" class="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm">
+        <option value="">Todas</option>
+        {(subjects ?? []).map((s) => (<option value={s.id} selected={s.id === fAsignatura}>{s.name}</option>))}
+      </select>
+    </div>
+    <div>
+      <label class="text-sm font-medium block mb-1" for="dia">Día</label>
+      <input id="dia" name="dia" type="date" value={fDia} class="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm" />
+    </div>
+    <div>
+      <label class="text-sm font-medium block mb-1" for="clase">Clase (horario)</label>
+      <select id="clase" name="clase" class="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm">
+        <option value="">Todas</option>
+        {(schedules ?? []).map((s) => (
+          <option value={s.id} selected={s.id === fClase}>d{s.weekday} {shortTime(s.start_time)}–{shortTime(s.end_time)}</option>
+        ))}
+      </select>
+    </div>
+    <div class="flex gap-2">
+      <button type="submit" class="rounded-lg bg-primary text-primary-foreground px-4 py-2 text-sm font-medium">Filtrar</button>
+      <a href="/admin/telemetria" class="rounded-lg border border-border px-4 py-2 text-sm">Limpiar</a>
+    </div>
+  </form>
+
+  <p class="text-sm text-muted-foreground mb-4">Mostrando página {page + 1} · {total} visitas en total (límite {LIMIT} por página).</p>
+
+  <div class="rounded-xl border border-border overflow-x-auto">
+    <table class="w-full text-sm min-w-[800px]">
+      <thead class="bg-muted">
+        <tr>
+          <th class="text-left px-4 py-2">Hora</th><th class="text-left px-4 py-2">Estudiante</th>
+          <th class="text-left px-4 py-2">Curso</th><th class="text-left px-4 py-2">Asignatura</th>
+          <th class="text-left px-4 py-2">Clase</th><th class="text-left px-4 py-2">IP</th><th class="text-left px-4 py-2">Ciudad</th>
+        </tr>
+      </thead>
+      <tbody>
+        {rows.map((r) => (
+          <tr class="border-t border-border">
+            <td class="px-4 py-2 whitespace-nowrap">{r.hora}</td>
+            <td class="px-4 py-2 font-medium">{r.estudiante}</td>
+            <td class="px-4 py-2">{r.curso}</td>
+            <td class="px-4 py-2">{r.asignatura}</td>
+            <td class="px-4 py-2">{r.clase}</td>
+            <td class="px-4 py-2">{r.ip}</td>
+            <td class="px-4 py-2">{r.ciudad}</td>
+          </tr>
+        ))}
+        {rows.length === 0 && (
+          <tr><td colspan="7" class="px-4 py-6 text-center text-muted-foreground">Sin visitas con estos filtros.</td></tr>
+        )}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="flex gap-2 mt-4">
+    {page > 0 && (<a href={`/admin/telemetria${qs(page - 1)}`} class="rounded-lg border border-border px-4 py-2 text-sm">← Anterior</a>)}
+    {total > (page + 1) * LIMIT && (<a href={`/admin/telemetria${qs(page + 1)}`} class="rounded-lg border border-border px-4 py-2 text-sm">Siguiente →</a>)}
+  </div>
+</AdminLayout>

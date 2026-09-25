@@ -16,7 +16,12 @@ bun-debug.log*
 
 # environment variables
 .env
+.env.*
+!.env.example
 .env.production
+
+# datos locales con nombres de estudiantes, no commitear
+Telemetria/
 
 # macOS-specific files
 .DS_Store
@@ -32,3 +37,4 @@ bun-debug.log*
 # auth state — contiene cookies/sesión, no commitear
 /playwright/.auth/*.json
 /playwright/.auth/profile/
+/playwright/.auth/additio/
