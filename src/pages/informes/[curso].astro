@@ -1,0 +1,346 @@
+---
+export const prerender = false;
+
+import Layout from "@/layouts/Layout.astro";
+import "@/styles/global.css";
+import { createSupabaseServiceRoleClient } from "@/lib/clases/guard";
+import { calcSuma, calcNeed3, calcTrend, riskLevel, type RiskLevel } from "@/lib/informes/math";
+
+const REPORT_COURSES = ["7-A", "7-B", "7-C", "7-D", "8-A", "8-B"];
+
+// Orden canónico de materias (el del concentrador). Las de octavo traen
+// C.N.F. y C.N.Q. separadas; las no listadas van al final, alfabéticas.
+const SUBJECT_ORDER = [
+  "C.N.B.", "C.N.FQ.", "C.N.F.", "C.N.Q.", "MAT", "SOC", "ETI", "REL",
+  "CAS", "LEC.CRI", "ING", "E.FIS", "ART", "SIST", "TEC", "COM.SOC",
+];
+
+// Ruta pública: sin sesión, lectura directa con service-role (solo server).
+const service = createSupabaseServiceRoleClient();
+
+const courseName = Astro.params.curso ?? "";
+const { data: course } = await service
+  .from("courses")
+  .select("id,name")
+  .eq("name", courseName)
+  .maybeSingle();
+
+if (!course) {
+  return Astro.redirect("/informes", 302);
+}
+
+const [{ data: students }, { data: courses }] = await Promise.all([
+  service.from("students").select("id,full_name").eq("course_id", course.id).order("full_name"),
+  service.from("courses").select("id,name").in("name", REPORT_COURSES).order("name"),
+]);
+
+const studentIds = (students ?? []).map((s) => s.id);
+let grades: Array<{ student_id: string; subject: string; period: number; score: number | null }> = [];
+if (studentIds.length > 0) {
+  const { data } = await service
+    .from("grades")
+    .select("student_id,subject,period,score")
+    .in("student_id", studentIds);
+  grades = (data ?? []) as typeof grades;
+}
+
+// scoreByStudent: estudiante -> materia -> { p1, p2 }
+const scoreByStudent = new Map<string, Map<string, { p1: number | null; p2: number | null }>>();
+for (const s of students ?? []) scoreByStudent.set(s.id, new Map());
+for (const g of grades) {
+  const bySubject = scoreByStudent.get(g.student_id);
+  if (!bySubject) continue;
+  const entry = bySubject.get(g.subject) ?? { p1: null, p2: null };
+  if (g.period === 1) entry.p1 = g.score;
+  if (g.period === 2) entry.p2 = g.score;
+  bySubject.set(g.subject, entry);
+}
+
+const allSubjects = [...new Set(grades.map((g) => g.subject))].sort((a, b) => {
+  const ia = SUBJECT_ORDER.indexOf(a);
+  const ib = SUBJECT_ORDER.indexOf(b);
+  if (ia === -1 && ib === -1) return a.localeCompare(b);
+  if (ia === -1) return 1;
+  if (ib === -1) return -1;
+  return ia - ib;
+});
+
+const selectedId = Astro.url.searchParams.get("estudiante") ?? "";
+const selected = (students ?? []).find((s) => s.id === selectedId) ?? null;
+
+const fmt = (n: number | null) =>
+  n === null || n === undefined || Number.isNaN(n) ? "—" : n.toFixed(1);
+
+const LEVEL_STYLE: Record<RiskLevel, string> = {
+  verde: "bg-green-100 text-green-800 border-green-200",
+  naranja: "bg-amber-100 text-amber-800 border-amber-200",
+  rojo: "bg-red-100 text-red-800 border-red-200",
+};
+
+type SubjectSummary = { subject: string; avgP1: number | null; avgP2: number | null; suma: number | null };
+
+// Vista general: promedios por materia + mejor estudiante + conteo en riesgo.
+const overview: SubjectSummary[] = allSubjects.map((subject) => {
+  const p1s: number[] = [];
+  const p2s: number[] = [];
+  for (const [, bySubject] of scoreByStudent) {
+    const e = bySubject.get(subject);
+    if (e?.p1 !== null && e?.p1 !== undefined) p1s.push(e.p1);
+    if (e?.p2 !== null && e?.p2 !== undefined) p2s.push(e.p2);
+  }
+  const avgP1 = p1s.length > 0 ? p1s.reduce((a, b) => a + b, 0) / p1s.length : null;
+  const avgP2 = p2s.length > 0 ? p2s.reduce((a, b) => a + b, 0) / p2s.length : null;
+  return { subject, avgP1, avgP2, suma: calcSuma(avgP1, avgP2) };
+});
+
+// Promedio de Suma por estudiante (promedio de las Sumas por materia con datos).
+const studentAvgSuma = new Map<string, number | null>();
+for (const s of students ?? []) {
+  const sumas: number[] = [];
+  for (const [, e] of scoreByStudent.get(s.id) ?? []) {
+    const suma = calcSuma(e.p1, e.p2);
+    if (suma !== null) sumas.push(suma);
+  }
+  studentAvgSuma.set(s.id, sumas.length > 0 ? sumas.reduce((a, b) => a + b, 0) / sumas.length : null);
+}
+let bestStudent: { id: string; full_name: string; avg: number } | null = null;
+for (const s of students ?? []) {
+  const avg = studentAvgSuma.get(s.id);
+  if (avg !== null && avg !== undefined && (!bestStudent || avg > bestStudent.avg)) {
+    bestStudent = { id: s.id, full_name: s.full_name, avg };
+  }
+}
+
+// Materias en rojo por estudiante (need3 > 5.0).
+const riskByStudent = new Map<string, number>();
+let totalRed = 0;
+for (const s of students ?? []) {
+  let red = 0;
+  for (const [, e] of scoreByStudent.get(s.id) ?? []) {
+    const risk = riskLevel(calcNeed3(calcSuma(e.p1, e.p2)));
+    if (risk?.level === "rojo") red++;
+  }
+  riskByStudent.set(s.id, red);
+  totalRed += red;
+}
+const studentsAtRisk = (students ?? [])
+  .map((s) => ({ ...s, red: riskByStudent.get(s.id) ?? 0 }))
+  .filter((s) => s.red > 0)
+  .sort((a, b) => b.red - a.red);
+
+// Vista por estudiante: filas por materia.
+const studentRows = selected
+  ? allSubjects.map((subject) => {
+      const e = scoreByStudent.get(selected.id)?.get(subject) ?? { p1: null, p2: null };
+      const suma = calcSuma(e.p1, e.p2);
+      const need = calcNeed3(suma);
+      return { subject, p1: e.p1, p2: e.p2, trend: calcTrend(e.p1, e.p2), suma, need, risk: riskLevel(need) };
+    })
+  : [];
+---
+
+<Layout title={`Informe ${course.name} · Mattics`}>
+  <div slot="head">
+    <meta name="robots" content="noindex,nofollow" />
+  </div>
+  <style>
+    @media print {
+      aside, .no-print {
+        display: none !important;
+      }
+      main {
+        max-width: none !important;
+        padding: 0 !important;
+      }
+      body {
+        background: white !important;
+      }
+    }
+  </style>
+
+  <main class="max-w-6xl mx-auto px-6 py-8">
+  <div class="flex items-center justify-between gap-4 mb-2">
+    <div>
+      <a href="/informes" class="text-sm text-muted-foreground hover:text-foreground no-print">← Todos los cursos</a>
+      <h1 class="text-3xl font-bold mt-1">Informe segundo periodo · {course.name}</h1>
+    </div>
+    <button onclick="window.print()" class="no-print rounded-lg bg-primary text-primary-foreground px-4 py-2 text-sm font-medium shrink-0">
+      Imprimir
+    </button>
+  </div>
+  <p class="text-muted-foreground mb-6">
+    {selected
+      ? `Boletín para entrega a padres/acudientes de ${selected.full_name}.`
+      : `${(students ?? []).length} estudiantes · Promedios por materia, mejor promedio y estudiantes en riesgo.`}
+  </p>
+
+  <div class="flex flex-col lg:flex-row gap-6 items-start">
+    <aside class="no-print w-full lg:w-64 shrink-0 rounded-xl border border-border bg-card p-4 lg:sticky lg:top-4">
+      <h2 class="font-semibold text-sm mb-3">Estudiantes</h2>
+      <ul class="space-y-1 max-h-96 overflow-y-auto">
+        <li>
+          <a
+            href={`/informes/${course.name}`}
+            class:list={[
+              "block text-sm px-3 py-1.5 rounded-lg",
+              !selected ? "bg-primary text-primary-foreground" : "hover:bg-muted",
+            ]}
+          >
+            Vista general del curso
+          </a>
+        </li>
+        {(students ?? []).map((s) => (
+          <li>
+            <a
+              href={`/informes/${course.name}?estudiante=${s.id}`}
+              class:list={[
+                "block text-sm px-3 py-1.5 rounded-lg",
+                selected?.id === s.id ? "bg-primary text-primary-foreground" : "hover:bg-muted",
+              ]}
+            >
+              {s.full_name}
+            </a>
+          </li>
+        ))}
+      </ul>
+    </aside>
+
+    <div class="flex-1 min-w-0 w-full">
+      {selected ? (
+        <section>
+          <h2 class="text-xl font-semibold mb-1">{selected.full_name}</h2>
+          <p class="text-sm text-muted-foreground mb-4">
+            Promedio Suma: {fmt(studentAvgSuma.get(selected.id) ?? null)} ·
+            Suma = P1 + P2. Necesita en III = 9 − Suma para ganar (9).
+          </p>
+          <div class="rounded-xl border border-border overflow-x-auto">
+            <table class="w-full text-sm min-w-[640px]">
+              <thead class="bg-muted">
+                <tr>
+                  <th class="text-left px-4 py-2">Materia</th>
+                  <th class="text-right px-4 py-2">P1</th>
+                  <th class="text-right px-4 py-2">P2</th>
+                  <th class="text-left px-4 py-2">Tendencia</th>
+                  <th class="text-right px-4 py-2">Suma (P1+P2)</th>
+                  <th class="text-right px-4 py-2">Necesita en III</th>
+                </tr>
+              </thead>
+              <tbody>
+                {studentRows.map((r) => (
+                  <tr class="border-t border-border">
+                    <td class="px-4 py-2 font-medium">{r.subject}</td>
+                    <td class="px-4 py-2 text-right">{fmt(r.p1)}</td>
+                    <td class="px-4 py-2 text-right">{fmt(r.p2)}</td>
+                    <td class="px-4 py-2">
+                      {r.trend === "subió" && <span class="text-green-700">↑ Subió</span>}
+                      {r.trend === "bajó" && <span class="text-red-600">↓ Bajó</span>}
+                      {r.trend === "igual" && <span class="text-muted-foreground">= Igual</span>}
+                      {r.trend === null && <span class="text-muted-foreground">—</span>}
+                    </td>
+                    <td class="px-4 py-2 text-right">{fmt(r.suma)}</td>
+                    <td class="px-4 py-2 text-right">
+                      {r.risk ? (
+                        <span class={`inline-block rounded-full border px-2.5 py-0.5 text-xs font-medium ${LEVEL_STYLE[r.risk.level]}`}>
+                          {fmt(r.need)}{r.risk.imposible ? " · imposible" : ""}
+                        </span>
+                      ) : (
+                        <span class="text-muted-foreground">—</span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+                {studentRows.length === 0 && (
+                  <tr><td colspan="6" class="px-4 py-6 text-center text-muted-foreground">Sin notas registradas.</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      ) : (
+        <section class="space-y-8">
+          <div>
+            <h2 class="text-xl font-semibold mb-3">Promedios por materia</h2>
+            <div class="rounded-xl border border-border overflow-x-auto">
+              <table class="w-full text-sm min-w-[480px]">
+                <thead class="bg-muted">
+                  <tr>
+                    <th class="text-left px-4 py-2">Materia</th>
+                    <th class="text-right px-4 py-2">Promedio P1</th>
+                    <th class="text-right px-4 py-2">Promedio P2</th>
+                    <th class="text-right px-4 py-2">Suma</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {overview.map((o) => (
+                    <tr class="border-t border-border">
+                      <td class="px-4 py-2 font-medium">{o.subject}</td>
+                      <td class="px-4 py-2 text-right">{fmt(o.avgP1)}</td>
+                      <td class="px-4 py-2 text-right">{fmt(o.avgP2)}</td>
+                      <td class="px-4 py-2 text-right">{fmt(o.suma)}</td>
+                    </tr>
+                  ))}
+                  {overview.length === 0 && (
+                    <tr><td colspan="4" class="px-4 py-6 text-center text-muted-foreground">Sin notas registradas todavía.</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="grid gap-4 sm:grid-cols-2">
+            <div class="rounded-xl border border-border bg-card p-5">
+              <h2 class="font-semibold mb-2">Mejor promedio (Suma)</h2>
+              {bestStudent ? (
+                <p class="text-sm">
+                  <a href={`/informes/${course.name}?estudiante=${bestStudent.id}`} class="font-medium text-primary hover:underline">
+                    {bestStudent.full_name}
+                  </a>
+                  <span class="text-muted-foreground"> · {fmt(bestStudent.avg)}</span>
+                </p>
+              ) : (
+                <p class="text-sm text-muted-foreground">Sin datos.</p>
+              )}
+            </div>
+            <div class="rounded-xl border border-border bg-card p-5">
+              <h2 class="font-semibold mb-2">En riesgo</h2>
+              <p class="text-sm text-muted-foreground">
+                {totalRed} {totalRed === 1 ? "materia en rojo" : "materias en rojo"} en total
+                ({studentsAtRisk.length} {studentsAtRisk.length === 1 ? "estudiante" : "estudiantes"}).
+              </p>
+            </div>
+          </div>
+
+          {studentsAtRisk.length > 0 && (
+            <div>
+              <h2 class="text-xl font-semibold mb-3">Materias en rojo por estudiante</h2>
+              <div class="rounded-xl border border-border overflow-hidden">
+                <table class="w-full text-sm">
+                  <thead class="bg-muted">
+                    <tr><th class="text-left px-4 py-2">Estudiante</th><th class="text-right px-4 py-2">Materias en rojo</th></tr>
+                  </thead>
+                  <tbody>
+                    {studentsAtRisk.map((s) => (
+                      <tr class="border-t border-border">
+                        <td class="px-4 py-2">
+                          <a href={`/informes/${course.name}?estudiante=${s.id}`} class="text-primary hover:underline">
+                            {s.full_name}
+                          </a>
+                        </td>
+                        <td class="px-4 py-2 text-right">
+                          <span class="inline-block rounded-full border px-2.5 py-0.5 text-xs font-medium bg-red-100 text-red-800 border-red-200">
+                            {s.red}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </section>
+      )}
+    </div>
+  </div>
+  </main>
+</Layout>

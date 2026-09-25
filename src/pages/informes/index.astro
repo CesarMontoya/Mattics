@@ -1,0 +1,69 @@
+---
+export const prerender = false;
+
+import Layout from "@/layouts/Layout.astro";
+import "@/styles/global.css";
+import { createSupabaseServiceRoleClient } from "@/lib/clases/guard";
+
+// Cursos con informe de padres (segundo periodo), en orden de presentación.
+const REPORT_COURSES = ["7-A", "7-B", "7-C", "7-D", "8-A", "8-B"];
+
+// Ruta pública: sin sesión, lectura directa con service-role (solo server).
+const service = createSupabaseServiceRoleClient();
+
+const { data: courses } = await service
+  .from("courses")
+  .select("id,name")
+  .in("name", REPORT_COURSES);
+
+const { data: students } = await service
+  .from("students")
+  .select("id,course_id");
+
+const countByCourse = new Map<string, number>();
+for (const s of students ?? []) {
+  if (!s.course_id) continue;
+  countByCourse.set(s.course_id, (countByCourse.get(s.course_id) ?? 0) + 1);
+}
+
+const cards = REPORT_COURSES.map((name) => {
+  const course = (courses ?? []).find((c) => c.name === name) ?? null;
+  return {
+    name,
+    id: course?.id ?? null,
+    count: course ? (countByCourse.get(course.id) ?? 0) : 0,
+  };
+});
+---
+
+<Layout title="Informes · Mattics">
+  <div slot="head">
+    <meta name="robots" content="noindex,nofollow" />
+  </div>
+
+  <main class="max-w-6xl mx-auto px-6 py-8">
+    <h1 class="text-3xl font-bold mb-2">Informe para reunión de padres</h1>
+    <p class="text-muted-foreground mb-8">
+      Segundo periodo: Suma (P1 + P2) y nota necesaria en el periodo III por estudiante y materia.
+    </p>
+
+    <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      {cards.map((c) => (
+        c.id ? (
+          <a
+            href={`/informes/${c.name}`}
+            class="rounded-xl border border-border bg-card p-6 hover:border-primary transition-colors"
+          >
+            <h2 class="font-semibold text-lg">Curso {c.name}</h2>
+            <p class="text-sm text-muted-foreground mt-1">{c.count} estudiantes</p>
+          </a>
+        ) : (
+          <div class="rounded-xl border border-dashed border-border bg-card p-6 opacity-60">
+            <h2 class="font-semibold text-lg">Curso {c.name}</h2>
+            <p class="text-sm text-muted-foreground mt-1">Sin datos todavía (falta crear el curso o correr el seed).</p>
+          </div>
+        )
+      ))}
+    </div>
+  </main>
+</Layout>
