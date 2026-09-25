@@ -15,6 +15,12 @@ export default defineConfig({
   },
   site: 'https://mattics.xyz',
   output: "server",
+  // Dokploy sirve detrás de un proxy y Astro bloquea los POST de formularios
+  // cuando Origin no coincide con Host. Panel admin de uso interno con
+  // sesión Supabase en cookies HttpOnly SameSite=Lax.
+  security: {
+    checkOrigin: false,
+  },
   integrations: [react()],
   adapter: node({
     mode: 'standalone'
