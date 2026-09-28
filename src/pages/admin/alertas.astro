@@ -4,7 +4,7 @@ export const prerender = false;
 import AdminLayout from "@/layouts/AdminLayout.astro";
 import { requireAdminPage } from "@/lib/clases/guard";
 import { shortTime } from "@/lib/clases/admin";
-import { formatFechaHora, rangoDiaBogota } from "@/lib/clases/fecha";
+import { formatFecha, formatFechaHora, rangoDiaBogota, BOGOTA_TZ } from "@/lib/clases/fecha";
 
 const guard = await requireAdminPage(Astro);
 if (!guard) return Astro.redirect("/admin/login", 302);
@@ -14,6 +14,7 @@ const fCurso = params.get("curso") ?? "";
 const fAsignatura = params.get("asignatura") ?? "";
 const fDia = params.get("dia") ?? "";
 const fClase = params.get("clase") ?? "";
+const vista = params.get("vista") === "agrupada" ? "agrupada" : "tabla";
 
 const [{ data: courses }, { data: subjects }, { data: schedules }] = await Promise.all([
   guard.service.from("courses").select("id,name").order("name"),
@@ -31,25 +32,37 @@ function schedLabel(id: unknown) {
   return s ? `d${s.weekday} ${shortTime(s.start_time)}–${shortTime(s.end_time)}` : id.slice(0, 8);
 }
 
+function subjectNameOf(subjectId: unknown): string {
+  if (typeof subjectId !== "string" || !subjectId) return "Sin asignatura";
+  const s = (subjects ?? []).find((x) => x.id === subjectId);
+  return s?.name ?? "Sin asignatura";
+}
+
 function toRow(a: any) {
   const v = firstOf(a.visits);
-  const st = v ? firstOf(v.students) : null;
+  const st = v ? firstOf((v as any).students) : null;
+  const vv = v as any;
   return {
-    hora: v?.occurred_at ? formatFechaHora(v.occurred_at) : "—",
-    estudiante: st?.full_name ?? "—",
-    ip: v?.ip ?? "—",
-    clase: schedLabel(v?.resolved_schedule_id),
-    detalle: JSON.stringify(a.details),
+    hora: vv?.occurred_at ? formatFechaHora(vv.occurred_at) : "—",
+    estudiante: (st as any)?.full_name ?? "—",
+    ip: vv?.ip ?? "—",
+    clase: schedLabel(vv?.resolved_schedule_id),
+    tipo: a.type as string,
+    detalle: JSON.stringify(a.details, null, 2),
+    severidad: a.severity as string,
+    subjectId: (vv?.resolved_subject_id as string | null) ?? null,
+    occurredAt: (vv?.occurred_at as string | null) ?? (a.created_at as string | null) ?? null,
   };
 }
 
-async function fetchAlerts(severity: "high" | "moderate") {
+async function fetchAlerts(severity: "high" | "moderate", types?: string[]) {
   let q = guard.service
     .from("alerts")
     .select("id,type,severity,created_at,details,visits(id,occurred_at,ip,student_id,resolved_course_id,resolved_subject_id,resolved_schedule_id,students(id,full_name))")
     .eq("severity", severity)
     .order("created_at", { ascending: false })
     .limit(200);
+  if (types) q = q.in("type", types);
   if (fClase) q = q.eq("visits.resolved_schedule_id", fClase);
   const { data } = await q;
   let rows = (data ?? []) as any[];
@@ -65,13 +78,101 @@ async function fetchAlerts(severity: "high" | "moderate") {
   return rows.map(toRow);
 }
 
-const [high, moderate] = await Promise.all([fetchAlerts("high"), fetchAlerts("moderate")]);
+const [high, simultaneous, moderate] = await Promise.all([
+  fetchAlerts("high", ["different_ip"]),
+  fetchAlerts("high", ["simultaneous"]),
+  fetchAlerts("moderate"),
+]);
+
+function qsVista(v: string) {
+  const p = new URLSearchParams();
+  if (fCurso) p.set("curso", fCurso);
+  if (fAsignatura) p.set("asignatura", fAsignatura);
+  if (fDia) p.set("dia", fDia);
+  if (fClase) p.set("clase", fClase);
+  if (v === "agrupada") p.set("vista", "agrupada");
+  return `?${p.toString()}`;
+}
+
+// ---- Vista agrupada: jerarquía asignatura + día → estudiante → entradas ----
+function bogotaDayKey(iso: unknown): string {
+  if (typeof iso !== "string" || !iso) return "";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  return d.toLocaleDateString("en-CA", { timeZone: BOGOTA_TZ });
+}
+
+const hoyBogota = new Date().toLocaleDateString("en-CA", { timeZone: BOGOTA_TZ });
+
+function etiquetaDia(dayKey: string): string {
+  if (!dayKey) return "Fecha desconocida";
+  if (dayKey === hoyBogota) return "Hoy";
+  return formatFecha(`${dayKey}T12:00:00Z`, dayKey);
+}
+
+type EntradaAlerta = { hora: string; estudiante: string; ip: string; clase: string; tipo: string; severidad: string; detalle: string };
+type GrupoAlerta = { asignatura: string; dayKey: string; entradas: EntradaAlerta[] };
+
+const gruposAlerta: GrupoAlerta[] = [];
+if (vista === "agrupada") {
+  const todas = [...high, ...simultaneous, ...moderate];
+  const porGrupo = new Map<string, GrupoAlerta>();
+  for (const r of todas) {
+    const nombreAsignatura = subjectNameOf((r as any).subjectId);
+    const dayKey = bogotaDayKey((r as any).occurredAt) || "sin-fecha";
+    const key = `${nombreAsignatura}|||${dayKey}`;
+    let g = porGrupo.get(key);
+    if (!g) {
+      g = { asignatura: nombreAsignatura, dayKey, entradas: [] };
+      porGrupo.set(key, g);
+    }
+    g.entradas.push({
+      hora: r.hora,
+      estudiante: r.estudiante,
+      ip: r.ip,
+      clase: r.clase,
+      tipo: r.tipo,
+      severidad: r.severidad,
+      detalle: r.detalle,
+    });
+  }
+  gruposAlerta.push(...porGrupo.values());
+  gruposAlerta.sort((a, b) => {
+    if (a.dayKey !== b.dayKey) return a.dayKey < b.dayKey ? 1 : -1;
+    return a.asignatura.localeCompare(b.asignatura, "es");
+  });
+}
+
+function estudiantesDeGrupoAlerta(g: GrupoAlerta) {
+  const porEst = new Map<string, EntradaAlerta[]>();
+  for (const e of g.entradas) {
+    const arr = porEst.get(e.estudiante) ?? [];
+    arr.push(e);
+    porEst.set(e.estudiante, arr);
+  }
+  return [...porEst.entries()]
+    .map(([nombre, entradas]) => ({ nombre, entradas }))
+    .sort((a, b) => a.nombre.localeCompare(b.nombre, "es"));
+}
+
+function badgeClase(e: EntradaAlerta): string {
+  if (e.tipo === "simultaneous") return "bg-red-700 text-white";
+  if (e.severidad === "high") return "bg-red-100 text-red-800 border border-red-200";
+  return "bg-amber-100 text-amber-800 border border-amber-200";
+}
+
+function badgeTexto(e: EntradaAlerta): string {
+  if (e.tipo === "simultaneous") return "SIMULTÁNEO";
+  if (e.tipo === "different_ip") return "IP DIFERENTE";
+  return e.tipo;
+}
 ---
 
 <AdminLayout title="Alertas · Admin Mattics" active="alertas">
   <h1 class="text-3xl font-bold mb-6">Alertas</h1>
 
   <form method="GET" class="rounded-xl border border-border bg-card p-5 mb-8 grid gap-3 sm:grid-cols-[1fr_1fr_1fr_1fr_auto] sm:items-end">
+    {vista === "agrupada" && (<input type="hidden" name="vista" value="agrupada" />)}
     <div>
       <label class="text-sm font-medium block mb-1" for="curso">Curso</label>
       <select id="curso" name="curso" class="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm">
@@ -101,49 +202,155 @@ const [high, moderate] = await Promise.all([fetchAlerts("high"), fetchAlerts("mo
     </div>
     <div class="flex gap-2">
       <button type="submit" class="rounded-lg bg-primary text-primary-foreground px-4 py-2 text-sm font-medium">Filtrar</button>
-      <a href="/admin/alertas" class="rounded-lg border border-border px-4 py-2 text-sm">Limpiar</a>
+      <a href={vista === "agrupada" ? "/admin/alertas?vista=agrupada" : "/admin/alertas"} class="rounded-lg border border-border px-4 py-2 text-sm">Limpiar</a>
     </div>
   </form>
 
-  <h2 class="text-xl font-semibold mb-3 text-red-700">Alta — IP diferente ({high.length})</h2>
-  <div class="rounded-xl border border-red-200 overflow-x-auto mb-10">
-    <table class="w-full text-sm min-w-[760px]">
-      <thead class="bg-red-50">
-        <tr><th class="text-left px-4 py-2">Hora</th><th class="text-left px-4 py-2">Estudiante</th><th class="text-left px-4 py-2">IP</th><th class="text-left px-4 py-2">Clase</th><th class="text-left px-4 py-2">Detalle</th></tr>
-      </thead>
-      <tbody>
-        {high.map((a) => (
-          <tr class="border-t border-border">
-            <td class="px-4 py-2 whitespace-nowrap">{a.hora}</td>
-            <td class="px-4 py-2 font-medium">{a.estudiante}</td>
-            <td class="px-4 py-2">{a.ip}</td>
-            <td class="px-4 py-2">{a.clase}</td>
-            <td class="px-4 py-2 text-muted-foreground max-w-xs truncate">{a.detalle}</td>
-          </tr>
-        ))}
-        {high.length === 0 && (<tr><td colspan="5" class="px-4 py-6 text-center text-muted-foreground">Sin alertas altas.</td></tr>)}
-      </tbody>
-    </table>
+  <div class="print:hidden flex flex-wrap gap-2 mb-8" role="tablist" aria-label="Vista">
+    <a
+      href={`/admin/alertas${qsVista("tabla")}`}
+      aria-current={vista === "tabla" ? "page" : undefined}
+      class:list={[
+        "rounded-full border px-4 py-1.5 text-sm font-medium",
+        vista === "tabla" ? "bg-primary text-primary-foreground border-primary" : "border-border text-muted-foreground hover:text-foreground",
+      ]}
+    >Tabla</a>
+    <a
+      href={`/admin/alertas${qsVista("agrupada")}`}
+      aria-current={vista === "agrupada" ? "page" : undefined}
+      class:list={[
+        "rounded-full border px-4 py-1.5 text-sm font-medium",
+        vista === "agrupada" ? "bg-primary text-primary-foreground border-primary" : "border-border text-muted-foreground hover:text-foreground",
+      ]}
+    >Agrupada</a>
   </div>
 
-  <h2 class="text-xl font-semibold mb-3 text-amber-700">Moderada — mismo IP repetido ({moderate.length})</h2>
-  <div class="rounded-xl border border-amber-200 overflow-x-auto">
-    <table class="w-full text-sm min-w-[760px]">
-      <thead class="bg-amber-50">
-        <tr><th class="text-left px-4 py-2">Hora</th><th class="text-left px-4 py-2">Estudiante</th><th class="text-left px-4 py-2">IP</th><th class="text-left px-4 py-2">Clase</th><th class="text-left px-4 py-2">Detalle</th></tr>
-      </thead>
-      <tbody>
-        {moderate.map((a) => (
-          <tr class="border-t border-border">
-            <td class="px-4 py-2 whitespace-nowrap">{a.hora}</td>
-            <td class="px-4 py-2 font-medium">{a.estudiante}</td>
-            <td class="px-4 py-2">{a.ip}</td>
-            <td class="px-4 py-2">{a.clase}</td>
-            <td class="px-4 py-2 text-muted-foreground max-w-xs truncate">{a.detalle}</td>
-          </tr>
-        ))}
-        {moderate.length === 0 && (<tr><td colspan="5" class="px-4 py-6 text-center text-muted-foreground">Sin alertas moderadas.</td></tr>)}
-      </tbody>
-    </table>
-  </div>
+  {vista === "tabla" && (
+    <>
+      <h2 class="text-xl font-semibold mb-3 text-red-700">Alta — IP diferente ({high.length})</h2>
+      <div class="rounded-xl border border-red-200 overflow-x-auto mb-10">
+        <table class="w-full text-sm min-w-[760px]">
+          <thead class="bg-red-50">
+            <tr><th class="text-left px-4 py-2">Hora</th><th class="text-left px-4 py-2">Estudiante</th><th class="text-left px-4 py-2">IP</th><th class="text-left px-4 py-2">Clase</th><th class="text-left px-4 py-2">Detalle</th></tr>
+          </thead>
+          <tbody>
+            {high.map((a) => (
+              <tr class="border-t border-border">
+                <td class="px-4 py-2 whitespace-nowrap">{a.hora}</td>
+                <td class="px-4 py-2 font-medium">{a.estudiante}</td>
+                <td class="px-4 py-2">{a.ip}</td>
+                <td class="px-4 py-2">{a.clase}</td>
+                <td class="px-4 py-2 text-muted-foreground">
+                  <details>
+                    <summary class="cursor-pointer text-primary hover:underline">Ver detalle</summary>
+                    <pre class="whitespace-pre-wrap break-all max-h-64 overflow-auto mt-2 rounded-lg bg-muted p-3 text-xs">{a.detalle}</pre>
+                  </details>
+                </td>
+              </tr>
+            ))}
+            {high.length === 0 && (<tr><td colspan="5" class="px-4 py-6 text-center text-muted-foreground">Sin alertas altas.</td></tr>)}
+          </tbody>
+        </table>
+      </div>
+
+      <h2 class="text-xl font-semibold mb-3 text-red-700">
+        Simultáneos — accesos casi simultáneos ({simultaneous.length})
+        <span class="ml-2 align-middle rounded-full bg-red-700 px-2.5 py-0.5 text-xs font-semibold text-white">SIMULTÁNEO</span>
+      </h2>
+      <p class="text-sm text-muted-foreground mb-3">Dos accesos del mismo enlace en menos de 20 minutos con IP o navegador distinto.</p>
+      <div class="rounded-xl border border-red-200 overflow-x-auto mb-10">
+        <table class="w-full text-sm min-w-[760px]">
+          <thead class="bg-red-50">
+            <tr><th class="text-left px-4 py-2">Hora</th><th class="text-left px-4 py-2">Estudiante</th><th class="text-left px-4 py-2">IP</th><th class="text-left px-4 py-2">Clase</th><th class="text-left px-4 py-2">Detalle</th></tr>
+          </thead>
+          <tbody>
+            {simultaneous.map((a) => (
+              <tr class="border-t border-border">
+                <td class="px-4 py-2 whitespace-nowrap">{a.hora}</td>
+                <td class="px-4 py-2 font-medium">{a.estudiante}</td>
+                <td class="px-4 py-2">{a.ip}</td>
+                <td class="px-4 py-2">{a.clase}</td>
+                <td class="px-4 py-2 text-muted-foreground">
+                  <details>
+                    <summary class="cursor-pointer text-primary hover:underline">Ver detalle</summary>
+                    <pre class="whitespace-pre-wrap break-all max-h-64 overflow-auto mt-2 rounded-lg bg-muted p-3 text-xs">{a.detalle}</pre>
+                  </details>
+                </td>
+              </tr>
+            ))}
+            {simultaneous.length === 0 && (<tr><td colspan="5" class="px-4 py-6 text-center text-muted-foreground">Sin accesos simultáneos.</td></tr>)}
+          </tbody>
+        </table>
+      </div>
+
+      <h2 class="text-xl font-semibold mb-3 text-amber-700">Moderada — mismo IP repetido ({moderate.length})</h2>
+      <div class="rounded-xl border border-amber-200 overflow-x-auto">
+        <table class="w-full text-sm min-w-[760px]">
+          <thead class="bg-amber-50">
+            <tr><th class="text-left px-4 py-2">Hora</th><th class="text-left px-4 py-2">Estudiante</th><th class="text-left px-4 py-2">IP</th><th class="text-left px-4 py-2">Clase</th><th class="text-left px-4 py-2">Detalle</th></tr>
+          </thead>
+          <tbody>
+            {moderate.map((a) => (
+              <tr class="border-t border-border">
+                <td class="px-4 py-2 whitespace-nowrap">{a.hora}</td>
+                <td class="px-4 py-2 font-medium">{a.estudiante}</td>
+                <td class="px-4 py-2">{a.ip}</td>
+                <td class="px-4 py-2">{a.clase}</td>
+                <td class="px-4 py-2 text-muted-foreground">
+                  <details>
+                    <summary class="cursor-pointer text-primary hover:underline">Ver detalle</summary>
+                    <pre class="whitespace-pre-wrap break-all max-h-64 overflow-auto mt-2 rounded-lg bg-muted p-3 text-xs">{a.detalle}</pre>
+                  </details>
+                </td>
+              </tr>
+            ))}
+            {moderate.length === 0 && (<tr><td colspan="5" class="px-4 py-6 text-center text-muted-foreground">Sin alertas moderadas.</td></tr>)}
+          </tbody>
+        </table>
+      </div>
+    </>
+  )}
+
+  {vista === "agrupada" && (
+    <>
+      <p class="text-sm text-muted-foreground mb-4">{high.length + simultaneous.length + moderate.length} alertas agrupadas por asignatura y día.</p>
+      {gruposAlerta.length === 0 && (
+        <p class="rounded-xl border border-border px-4 py-6 text-center text-sm text-muted-foreground">Sin alertas con estos filtros.</p>
+      )}
+      <div class="grid gap-4">
+        {gruposAlerta.map((g) => {
+          const estudiantes = estudiantesDeGrupoAlerta(g);
+          return (
+            <section class="rounded-xl border border-border bg-card p-4 sm:p-5">
+              <header class="flex flex-wrap items-baseline gap-x-3 gap-y-1 mb-3">
+                <h2 class="text-lg font-semibold">{g.asignatura}</h2>
+                <span class="text-sm text-muted-foreground">{etiquetaDia(g.dayKey)}{g.dayKey !== "sin-fecha" && g.dayKey !== hoyBogota ? ` · ${g.dayKey}` : ""}</span>
+                <span class="ml-auto text-xs rounded-full bg-muted px-2.5 py-1 font-medium">{g.entradas.length} {g.entradas.length === 1 ? "alerta" : "alertas"} · {estudiantes.length} {estudiantes.length === 1 ? "estudiante" : "estudiantes"}</span>
+              </header>
+              <div class="grid gap-3">
+                {estudiantes.map((est) => (
+                  <article class="rounded-lg border border-border p-3">
+                    <h3 class="text-sm font-semibold mb-2">{est.nombre} <span class="ml-1 font-normal text-muted-foreground">({est.entradas.length})</span></h3>
+                    <ul class="grid gap-2">
+                      {est.entradas.map((e) => (
+                        <li class="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
+                          <span class="whitespace-nowrap text-muted-foreground">{e.hora}</span>
+                          <span class="font-mono text-xs sm:text-sm break-all">{e.ip}</span>
+                          <span class={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${badgeClase(e)}`}>{badgeTexto(e)}</span>
+                          <details class="w-full text-muted-foreground">
+                            <summary class="cursor-pointer text-primary hover:underline text-xs">Ver detalle</summary>
+                            <pre class="whitespace-pre-wrap break-all max-h-64 overflow-auto mt-2 rounded-lg bg-muted p-3 text-xs">{e.detalle}</pre>
+                          </details>
+                        </li>
+                      ))}
+                    </ul>
+                  </article>
+                ))}
+              </div>
+            </section>
+          );
+        })}
+      </div>
+    </>
+  )}
 </AdminLayout>

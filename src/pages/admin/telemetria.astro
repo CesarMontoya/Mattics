@@ -4,7 +4,7 @@ export const prerender = false;
 import AdminLayout from "@/layouts/AdminLayout.astro";
 import { requireAdminPage } from "@/lib/clases/guard";
 import { shortTime } from "@/lib/clases/admin";
-import { formatFechaHora, rangoDiaBogota } from "@/lib/clases/fecha";
+import { formatFecha, formatFechaHora, rangoDiaBogota, BOGOTA_TZ } from "@/lib/clases/fecha";
 
 const guard = await requireAdminPage(Astro);
 if (!guard) return Astro.redirect("/admin/login", 302);
@@ -14,8 +14,10 @@ const fCurso = params.get("curso") ?? "";
 const fAsignatura = params.get("asignatura") ?? "";
 const fDia = params.get("dia") ?? "";
 const fClase = params.get("clase") ?? "";
+const vista = params.get("vista") === "agrupada" ? "agrupada" : "tabla";
 const page = Math.max(0, Number(params.get("page") ?? "0") || 0);
 const LIMIT = 200;
+const AGRUPADA_LIMIT = 2000;
 
 const [{ data: courses }, { data: subjects }, { data: schedules }] = await Promise.all([
   guard.service.from("courses").select("id,name").order("name"),
@@ -23,21 +25,41 @@ const [{ data: courses }, { data: subjects }, { data: schedules }] = await Promi
   guard.service.from("schedules").select("id,course_id,subject_id,weekday,start_time,end_time").order("weekday").order("start_time"),
 ]);
 
-let query = guard.service
-  .from("visits")
-  .select("id,occurred_at,ip,ip_city,user_agent,student_id,resolved_course_id,resolved_subject_id,resolved_schedule_id,students(id,full_name),courses:resolved_course_id(id,name),subjects:resolved_subject_id(id,name)", { count: "exact" })
-  .order("occurred_at", { ascending: false })
-  .range(page * LIMIT, page * LIMIT + LIMIT - 1);
-
-if (fCurso) query = query.eq("resolved_course_id", fCurso);
-if (fAsignatura) query = query.eq("resolved_subject_id", fAsignatura);
-if (fClase) query = query.eq("resolved_schedule_id", fClase);
-if (fDia) {
-  const { desde, hasta } = rangoDiaBogota(fDia);
-  query = query.gte("occurred_at", desde).lt("occurred_at", hasta);
+let visitsRaw: any[] | null = null;
+let count: number | null = null;
+if (vista === "agrupada") {
+  let query = guard.service
+    .from("visits")
+    .select("id,occurred_at,ip,ip_city,user_agent,student_id,resolved_course_id,resolved_subject_id,resolved_schedule_id,students(id,full_name),courses:resolved_course_id(id,name),subjects:resolved_subject_id(id,name)")
+    .order("occurred_at", { ascending: false })
+    .limit(AGRUPADA_LIMIT);
+  if (fCurso) query = query.eq("resolved_course_id", fCurso);
+  if (fAsignatura) query = query.eq("resolved_subject_id", fAsignatura);
+  if (fClase) query = query.eq("resolved_schedule_id", fClase);
+  if (fDia) {
+    const { desde, hasta } = rangoDiaBogota(fDia);
+    query = query.gte("occurred_at", desde).lt("occurred_at", hasta);
+  }
+  const { data } = await query;
+  visitsRaw = data as any[];
+  count = (data ?? []).length;
+} else {
+  let query = guard.service
+    .from("visits")
+    .select("id,occurred_at,ip,ip_city,user_agent,student_id,resolved_course_id,resolved_subject_id,resolved_schedule_id,students(id,full_name),courses:resolved_course_id(id,name),subjects:resolved_subject_id(id,name)", { count: "exact" })
+    .order("occurred_at", { ascending: false })
+    .range(page * LIMIT, page * LIMIT + LIMIT - 1);
+  if (fCurso) query = query.eq("resolved_course_id", fCurso);
+  if (fAsignatura) query = query.eq("resolved_subject_id", fAsignatura);
+  if (fClase) query = query.eq("resolved_schedule_id", fClase);
+  if (fDia) {
+    const { desde, hasta } = rangoDiaBogota(fDia);
+    query = query.gte("occurred_at", desde).lt("occurred_at", hasta);
+  }
+  const { data, count: c } = await query;
+  visitsRaw = data as any[];
+  count = c;
 }
-
-const { data: visitsRaw, count } = await query;
 
 function firstOf(v: unknown) {
   return Array.isArray(v) ? v[0] : (v as any);
@@ -69,13 +91,83 @@ function qs(pageNum: number) {
   return `?${p.toString()}`;
 }
 
+function qsVista(v: string) {
+  const p = new URLSearchParams();
+  if (fCurso) p.set("curso", fCurso);
+  if (fAsignatura) p.set("asignatura", fAsignatura);
+  if (fDia) p.set("dia", fDia);
+  if (fClase) p.set("clase", fClase);
+  if (v === "agrupada") p.set("vista", "agrupada");
+  return `?${p.toString()}`;
+}
+
 const total = count ?? 0;
+
+// ---- Vista agrupada: jerarquía asignatura + día → estudiante → entradas ----
+function bogotaDayKey(iso: unknown): string {
+  if (typeof iso !== "string" || !iso) return "";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  return d.toLocaleDateString("en-CA", { timeZone: BOGOTA_TZ });
+}
+
+const hoyBogota = new Date().toLocaleDateString("en-CA", { timeZone: BOGOTA_TZ });
+
+function etiquetaDia(dayKey: string): string {
+  if (!dayKey) return "Fecha desconocida";
+  if (dayKey === hoyBogota) return "Hoy";
+  return formatFecha(`${dayKey}T12:00:00Z`, dayKey);
+}
+
+type EntradaTel = { hora: string; estudiante: string; ip: string; ciudad: string; clase: string; occurred_at: string };
+type GrupoTel = { asignatura: string; dayKey: string; entradas: EntradaTel[] };
+
+const gruposTel: GrupoTel[] = [];
+if (vista === "agrupada") {
+  const porGrupo = new Map<string, GrupoTel>();
+  for (const v of (visitsRaw ?? []) as any[]) {
+    const nombreAsignatura = firstOf(v.subjects)?.name ?? "Sin asignatura";
+    const dayKey = bogotaDayKey(v.occurred_at) || "sin-fecha";
+    const key = `${nombreAsignatura}|||${dayKey}`;
+    let g = porGrupo.get(key);
+    if (!g) {
+      g = { asignatura: nombreAsignatura, dayKey, entradas: [] };
+      porGrupo.set(key, g);
+    }
+    g.entradas.push({
+      hora: v.occurred_at ? formatFechaHora(v.occurred_at) : "—",
+      estudiante: firstOf(v.students)?.full_name ?? "—",
+      ip: v.ip ?? "—",
+      ciudad: v.ip_city ?? "—",
+      clase: schedLabel(v.resolved_schedule_id),
+      occurred_at: v.occurred_at ?? "",
+    });
+  }
+  gruposTel.push(...porGrupo.values());
+  gruposTel.sort((a, b) => {
+    if (a.dayKey !== b.dayKey) return a.dayKey < b.dayKey ? 1 : -1;
+    return a.asignatura.localeCompare(b.asignatura, "es");
+  });
+}
+
+function estudiantesDeGrupo(g: GrupoTel) {
+  const porEst = new Map<string, EntradaTel[]>();
+  for (const e of g.entradas) {
+    const arr = porEst.get(e.estudiante) ?? [];
+    arr.push(e);
+    porEst.set(e.estudiante, arr);
+  }
+  return [...porEst.entries()]
+    .map(([nombre, entradas]) => ({ nombre, entradas }))
+    .sort((a, b) => a.nombre.localeCompare(b.nombre, "es"));
+}
 ---
 
 <AdminLayout title="Telemetría · Admin Mattics" active="telemetria">
   <h1 class="text-3xl font-bold mb-6">Telemetría de visitas</h1>
 
   <form method="GET" class="rounded-xl border border-border bg-card p-5 mb-6 grid gap-3 sm:grid-cols-[1fr_1fr_1fr_1fr_auto] sm:items-end">
+    {vista === "agrupada" && (<input type="hidden" name="vista" value="agrupada" />)}
     <div>
       <label class="text-sm font-medium block mb-1" for="curso">Curso</label>
       <select id="curso" name="curso" class="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm">
@@ -105,42 +197,105 @@ const total = count ?? 0;
     </div>
     <div class="flex gap-2">
       <button type="submit" class="rounded-lg bg-primary text-primary-foreground px-4 py-2 text-sm font-medium">Filtrar</button>
-      <a href="/admin/telemetria" class="rounded-lg border border-border px-4 py-2 text-sm">Limpiar</a>
+      <a href={vista === "agrupada" ? `/admin/telemetria?vista=agrupada` : "/admin/telemetria"} class="rounded-lg border border-border px-4 py-2 text-sm">Limpiar</a>
     </div>
   </form>
 
-  <p class="text-sm text-muted-foreground mb-4">Mostrando página {page + 1} · {total} visitas en total (límite {LIMIT} por página).</p>
-
-  <div class="rounded-xl border border-border overflow-x-auto">
-    <table class="w-full text-sm min-w-[800px]">
-      <thead class="bg-muted">
-        <tr>
-          <th class="text-left px-4 py-2">Hora</th><th class="text-left px-4 py-2">Estudiante</th>
-          <th class="text-left px-4 py-2">Curso</th><th class="text-left px-4 py-2">Asignatura</th>
-          <th class="text-left px-4 py-2">Clase</th><th class="text-left px-4 py-2">IP</th><th class="text-left px-4 py-2">Ciudad</th>
-        </tr>
-      </thead>
-      <tbody>
-        {rows.map((r) => (
-          <tr class="border-t border-border">
-            <td class="px-4 py-2 whitespace-nowrap">{r.hora}</td>
-            <td class="px-4 py-2 font-medium">{r.estudiante}</td>
-            <td class="px-4 py-2">{r.curso}</td>
-            <td class="px-4 py-2">{r.asignatura}</td>
-            <td class="px-4 py-2">{r.clase}</td>
-            <td class="px-4 py-2">{r.ip}</td>
-            <td class="px-4 py-2">{r.ciudad}</td>
-          </tr>
-        ))}
-        {rows.length === 0 && (
-          <tr><td colspan="7" class="px-4 py-6 text-center text-muted-foreground">Sin visitas con estos filtros.</td></tr>
-        )}
-      </tbody>
-    </table>
+  <div class="print:hidden flex flex-wrap gap-2 mb-6" role="tablist" aria-label="Vista">
+    <a
+      href={`/admin/telemetria${qsVista("tabla")}`}
+      aria-current={vista === "tabla" ? "page" : undefined}
+      class:list={[
+        "rounded-full border px-4 py-1.5 text-sm font-medium",
+        vista === "tabla" ? "bg-primary text-primary-foreground border-primary" : "border-border text-muted-foreground hover:text-foreground",
+      ]}
+    >Tabla</a>
+    <a
+      href={`/admin/telemetria${qsVista("agrupada")}`}
+      aria-current={vista === "agrupada" ? "page" : undefined}
+      class:list={[
+        "rounded-full border px-4 py-1.5 text-sm font-medium",
+        vista === "agrupada" ? "bg-primary text-primary-foreground border-primary" : "border-border text-muted-foreground hover:text-foreground",
+      ]}
+    >Agrupada</a>
   </div>
 
-  <div class="flex gap-2 mt-4">
-    {page > 0 && (<a href={`/admin/telemetria${qs(page - 1)}`} class="rounded-lg border border-border px-4 py-2 text-sm">← Anterior</a>)}
-    {total > (page + 1) * LIMIT && (<a href={`/admin/telemetria${qs(page + 1)}`} class="rounded-lg border border-border px-4 py-2 text-sm">Siguiente →</a>)}
-  </div>
+  {vista === "tabla" && (
+    <>
+      <p class="text-sm text-muted-foreground mb-4">Mostrando página {page + 1} · {total} visitas en total (límite {LIMIT} por página).</p>
+
+      <div class="rounded-xl border border-border overflow-x-auto">
+        <table class="w-full text-sm min-w-[800px]">
+          <thead class="bg-muted">
+            <tr>
+              <th class="text-left px-4 py-2">Hora</th><th class="text-left px-4 py-2">Estudiante</th>
+              <th class="text-left px-4 py-2">Curso</th><th class="text-left px-4 py-2">Asignatura</th>
+              <th class="text-left px-4 py-2">Clase</th><th class="text-left px-4 py-2">IP</th><th class="text-left px-4 py-2">Ciudad</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((r) => (
+              <tr class="border-t border-border">
+                <td class="px-4 py-2 whitespace-nowrap">{r.hora}</td>
+                <td class="px-4 py-2 font-medium">{r.estudiante}</td>
+                <td class="px-4 py-2">{r.curso}</td>
+                <td class="px-4 py-2">{r.asignatura}</td>
+                <td class="px-4 py-2">{r.clase}</td>
+                <td class="px-4 py-2">{r.ip}</td>
+                <td class="px-4 py-2">{r.ciudad}</td>
+              </tr>
+            ))}
+            {rows.length === 0 && (
+              <tr><td colspan="7" class="px-4 py-6 text-center text-muted-foreground">Sin visitas con estos filtros.</td></tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      <div class="flex gap-2 mt-4">
+        {page > 0 && (<a href={`/admin/telemetria${qs(page - 1)}`} class="rounded-lg border border-border px-4 py-2 text-sm">← Anterior</a>)}
+        {total > (page + 1) * LIMIT && (<a href={`/admin/telemetria${qs(page + 1)}`} class="rounded-lg border border-border px-4 py-2 text-sm">Siguiente →</a>)}
+      </div>
+    </>
+  )}
+
+  {vista === "agrupada" && (
+    <>
+      <p class="text-sm text-muted-foreground mb-4">{total} visitas agrupadas por asignatura y día (máx. {AGRUPADA_LIMIT}).</p>
+      {gruposTel.length === 0 && (
+        <p class="rounded-xl border border-border px-4 py-6 text-center text-sm text-muted-foreground">Sin visitas con estos filtros.</p>
+      )}
+      <div class="grid gap-4">
+        {gruposTel.map((g) => {
+          const estudiantes = estudiantesDeGrupo(g);
+          return (
+            <section class="rounded-xl border border-border bg-card p-4 sm:p-5">
+              <header class="flex flex-wrap items-baseline gap-x-3 gap-y-1 mb-3">
+                <h2 class="text-lg font-semibold">{g.asignatura}</h2>
+                <span class="text-sm text-muted-foreground">{etiquetaDia(g.dayKey)}{g.dayKey !== "sin-fecha" && g.dayKey !== hoyBogota ? ` · ${g.dayKey}` : ""}</span>
+                <span class="ml-auto text-xs rounded-full bg-muted px-2.5 py-1 font-medium">{g.entradas.length} {g.entradas.length === 1 ? "visita" : "visitas"} · {estudiantes.length} {estudiantes.length === 1 ? "estudiante" : "estudiantes"}</span>
+              </header>
+              <div class="grid gap-3">
+                {estudiantes.map((est) => (
+                  <article class="rounded-lg border border-border p-3">
+                    <h3 class="text-sm font-semibold mb-2">{est.nombre} <span class="ml-1 font-normal text-muted-foreground">({est.entradas.length})</span></h3>
+                    <ul class="grid gap-1.5">
+                      {est.entradas.map((e) => (
+                        <li class="flex flex-wrap gap-x-3 gap-y-0.5 text-sm">
+                          <span class="whitespace-nowrap text-muted-foreground">{e.hora}</span>
+                          <span class="font-mono text-xs sm:text-sm break-all">{e.ip}</span>
+                          <span class="text-muted-foreground">{e.ciudad}</span>
+                          <span class="text-muted-foreground">{e.clase}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </article>
+                ))}
+              </div>
+            </section>
+          );
+        })}
+      </div>
+    </>
+  )}
 </AdminLayout>

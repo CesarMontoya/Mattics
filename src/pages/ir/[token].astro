@@ -140,6 +140,58 @@ if (!token) {
               });
               if (alertError) console.error("[ir] alert insert failed:", alertError.message);
             }
+
+            // Detección de accesos simultáneos: otra visita del mismo enlace en
+            // los últimos 20 minutos con IP o user_agent distinto (posible
+            // enlace compartido). Best-effort: nunca bloquea la redirección.
+            try {
+              const currentId = (visit as { id: string }).id;
+              const currentUa = uaRaw ?? uaShort;
+              const windowStart = new Date(Date.now() - 20 * 60 * 1000).toISOString();
+              const { data: recentWindow } = await supabase
+                .from("visits")
+                .select("id,ip,ip_city,user_agent,occurred_at")
+                .eq("student_link_id", context.studentLinkId)
+                .neq("id", currentId)
+                .gte("occurred_at", windowStart)
+                .order("occurred_at", { ascending: false })
+                .limit(10);
+              const match = ((recentWindow ?? []) as Array<{
+                id: string;
+                ip: string | null;
+                ip_city: string | null;
+                user_agent: string | null;
+                occurred_at: string;
+              }>).find((v) => v.ip !== ip || v.user_agent !== currentUa);
+              if (match) {
+                const deltaSeconds = Math.max(
+                  0,
+                  Math.round(
+                    (new Date(nowIso).getTime() - new Date(match.occurred_at).getTime()) / 1000,
+                  ),
+                );
+                const { error: simError } = await supabase.from("alerts").insert({
+                  visit_id: currentId,
+                  type: "simultaneous",
+                  severity: "high",
+                  details: {
+                    current_visit_id: currentId,
+                    current_ip: ip,
+                    current_city: geo.city,
+                    current_user_agent: currentUa,
+                    matched_visit_id: match.id,
+                    matched_ip: match.ip,
+                    matched_city: match.ip_city,
+                    matched_user_agent: match.user_agent,
+                    delta_seconds: deltaSeconds,
+                    window_minutes: 20,
+                  },
+                });
+                if (simError) console.error("[ir] simultaneous alert failed:", simError.message);
+              }
+            } catch (err) {
+              console.error("[ir] simultaneous check failed:", err);
+            }
           } else if (visitError) {
             console.error("[ir] visit insert failed:", visitError.message);
           }
