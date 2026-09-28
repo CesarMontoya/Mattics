@@ -1,0 +1,162 @@
+---
+export const prerender = false;
+
+import Layout from "@/layouts/Layout.astro";
+import "@/styles/global.css";
+import { createSupabaseServiceRoleClient } from "@/lib/clases/guard";
+
+// Ruta pública: sin sesión, lectura directa con service-role (solo server).
+const service = createSupabaseServiceRoleClient();
+
+const courseName = Astro.params.curso ?? "";
+const { data: course } = await service
+  .from("courses")
+  .select("id,name")
+  .eq("name", courseName)
+  .maybeSingle();
+
+if (!course) {
+  return Astro.redirect("/enlaces", 302);
+}
+
+const { data: students } = await service
+  .from("students")
+  .select("id,full_name")
+  .eq("course_id", course.id)
+  .order("full_name");
+
+const studentIds = (students ?? []).map((s) => s.id);
+let tokensByStudent = new Map<string, string>();
+if (studentIds.length > 0) {
+  const { data: links } = await service
+    .from("student_links")
+    .select("student_id,token")
+    .in("student_id", studentIds);
+  for (const l of links ?? []) {
+    if (!tokensByStudent.has(l.student_id)) {
+      tokensByStudent.set(l.student_id, l.token);
+    }
+  }
+}
+
+const origin = Astro.url.origin;
+const rows = (students ?? []).map((s) => {
+  const token = tokensByStudent.get(s.id) ?? null;
+  return {
+    id: s.id,
+    full_name: s.full_name,
+    url: token ? `${origin}/ir/${token}` : null,
+  };
+});
+---
+
+<Layout title={`Enlaces ${course.name} · Mattics`}>
+  <div slot="head">
+    <meta name="robots" content="noindex,nofollow" />
+  </div>
+
+  <header class="sticky top-0 z-10 border-b border-border bg-card/95 backdrop-blur">
+    <div class="max-w-3xl mx-auto px-4 py-3">
+      <a href="/enlaces" class="text-sm text-muted-foreground hover:text-foreground">← Todos los cursos</a>
+      <div class="flex items-baseline justify-between gap-3 mt-1">
+        <h1 class="text-xl sm:text-2xl font-bold truncate">Curso {course.name}</h1>
+        <p class="text-sm text-muted-foreground shrink-0">{rows.length} {rows.length === 1 ? "estudiante" : "estudiantes"}</p>
+      </div>
+      <label class="block mt-3">
+        <span class="sr-only">Buscar estudiante</span>
+        <input
+          id="buscar"
+          type="search"
+          placeholder="Buscar estudiante…"
+          autocomplete="off"
+          class="w-full rounded-lg border border-border bg-background px-4 py-2.5 text-base placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+        />
+      </label>
+      <p id="sin-resultados" class="hidden text-sm text-muted-foreground mt-2">Sin resultados para esa búsqueda.</p>
+    </div>
+  </header>
+
+  <main class="max-w-3xl mx-auto px-4 py-4 sm:py-6">
+    <ul id="lista" class="space-y-3">
+      {rows.map((r) => (
+        <li
+          data-nombre={r.full_name.toLowerCase()}
+          class="rounded-xl border border-border bg-card p-4 flex flex-col gap-3 sm:flex-row sm:items-center"
+        >
+          <div class="min-w-0 flex-1">
+            <p class="font-semibold leading-snug">{r.full_name}</p>
+            {r.url ? (
+              <p class="text-sm text-muted-foreground truncate mt-0.5" title={r.url}>{r.url}</p>
+            ) : (
+              <p class="text-sm text-muted-foreground mt-0.5">Sin enlace todavía.</p>
+            )}
+          </div>
+          {r.url && (
+            <button
+              type="button"
+              data-copy={r.url}
+              class="shrink-0 rounded-lg bg-primary text-primary-foreground px-5 py-2.5 text-sm font-semibold min-h-[44px] active:scale-95 transition-transform"
+            >
+              Copiar
+            </button>
+          )}
+        </li>
+      ))}
+      {rows.length === 0 && (
+        <li class="rounded-xl border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
+          Este curso aún no tiene estudiantes.
+        </li>
+      )}
+    </ul>
+  </main>
+
+  <script is:inline>
+    const input = document.getElementById("buscar");
+    const lista = document.getElementById("lista");
+    const sinResultados = document.getElementById("sin-resultados");
+    const items = lista ? Array.from(lista.querySelectorAll("[data-nombre]")) : [];
+
+    input?.addEventListener("input", () => {
+      const q = (input.value ?? "").trim().toLowerCase();
+      let visibles = 0;
+      for (const el of items) {
+        const nombre = el.getAttribute("data-nombre") ?? "";
+        const ok = q === "" || nombre.includes(q);
+        el.classList.toggle("hidden", !ok);
+        if (ok) visibles++;
+      }
+      sinResultados?.classList.toggle("hidden", visibles > 0);
+    });
+
+    async function copiarTexto(texto) {
+      try {
+        await navigator.clipboard.writeText(texto);
+        return true;
+      } catch {
+        try {
+          const ta = document.createElement("textarea");
+          ta.value = texto;
+          ta.setAttribute("readonly", "");
+          ta.style.position = "fixed";
+          ta.style.opacity = "0";
+          document.body.appendChild(ta);
+          ta.select();
+          const ok = document.execCommand("copy");
+          document.body.removeChild(ta);
+          return ok;
+        } catch {
+          return false;
+        }
+      }
+    }
+
+    document.addEventListener("click", async (e) => {
+      const btn = e.target.closest("[data-copy]");
+      if (!btn || btn.disabled) return;
+      const original = btn.textContent;
+      const ok = await copiarTexto(btn.dataset.copy ?? "");
+      btn.textContent = ok ? "¡Copiado!" : "Error";
+      setTimeout(() => (btn.textContent = original), 1500);
+    });
+  </script>
+</Layout>

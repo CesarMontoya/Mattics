@@ -61,6 +61,9 @@ const missing = visible.filter((s) => !linksByStudent.get(s.id)).length;
   </form>
 
   <div class="flex flex-wrap gap-2 mb-6">
+    <a href="/enlaces" class="rounded-lg border border-border px-4 py-2 text-sm font-medium hover:border-primary">
+      Compartir vista pública
+    </a>
     <form method="POST" action="/api/admin/enlaces-estudiantes">
       <input type="hidden" name="action" value="bulk" />
       {filterCourses.map((c) => (<input type="hidden" name="curso" value={c} />))}

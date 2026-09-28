@@ -1,0 +1,69 @@
+---
+export const prerender = false;
+
+import Layout from "@/layouts/Layout.astro";
+import "@/styles/global.css";
+import { createSupabaseServiceRoleClient } from "@/lib/clases/guard";
+
+// Cursos en orden de presentación.
+const LINK_COURSES = ["7-A", "7-B", "7-C", "7-D", "8-A", "8-B"];
+
+// Ruta pública: sin sesión, lectura directa con service-role (solo server).
+const service = createSupabaseServiceRoleClient();
+
+const { data: courses } = await service
+  .from("courses")
+  .select("id,name")
+  .in("name", LINK_COURSES);
+
+const { data: students } = await service
+  .from("students")
+  .select("id,course_id");
+
+const countByCourse = new Map<string, number>();
+for (const s of students ?? []) {
+  if (!s.course_id) continue;
+  countByCourse.set(s.course_id, (countByCourse.get(s.course_id) ?? 0) + 1);
+}
+
+const cards = LINK_COURSES.map((name) => {
+  const course = (courses ?? []).find((c) => c.name === name) ?? null;
+  return {
+    name,
+    id: course?.id ?? null,
+    count: course ? (countByCourse.get(course.id) ?? 0) : 0,
+  };
+});
+---
+
+<Layout title="Compartir enlaces · Mattics">
+  <div slot="head">
+    <meta name="robots" content="noindex,nofollow" />
+  </div>
+
+  <main class="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
+    <h1 class="text-2xl sm:text-3xl font-bold mb-2">Compartir enlaces</h1>
+    <p class="text-muted-foreground mb-6 sm:mb-8 text-sm sm:text-base">
+      Elige un curso para ver los enlaces personales de sus estudiantes y compartirlos con otros docentes.
+    </p>
+
+    <div class="grid gap-3 sm:gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      {cards.map((c) => (
+        c.id ? (
+          <a
+            href={`/enlaces/${c.name}`}
+            class="rounded-xl border border-border bg-card p-5 sm:p-6 hover:border-primary transition-colors min-h-[88px] flex flex-col justify-center"
+          >
+            <h2 class="font-semibold text-lg">Curso {c.name}</h2>
+            <p class="text-sm text-muted-foreground mt-1">{c.count} {c.count === 1 ? "estudiante" : "estudiantes"}</p>
+          </a>
+        ) : (
+          <div class="rounded-xl border border-dashed border-border bg-card p-5 sm:p-6 opacity-60">
+            <h2 class="font-semibold text-lg">Curso {c.name}</h2>
+            <p class="text-sm text-muted-foreground mt-1">Sin datos todavía.</p>
+          </div>
+        )
+      ))}
+    </div>
+  </main>
+</Layout>
