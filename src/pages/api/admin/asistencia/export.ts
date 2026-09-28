@@ -1,6 +1,7 @@
 import type { APIRoute } from "astro";
 import * as XLSX from "xlsx";
 import { requireAdminApi } from "@/lib/clases/guard";
+import { rangoDiaBogota } from "@/lib/clases/fecha";
 
 export const prerender = false;
 
@@ -19,7 +20,8 @@ async function loadAttendance(service: any, params: URLSearchParams) {
   if (fAsignatura) visitQuery = visitQuery.eq("resolved_subject_id", fAsignatura);
   if (fClase) visitQuery = visitQuery.eq("resolved_schedule_id", fClase);
   if (fDia) {
-    visitQuery = visitQuery.gte("occurred_at", `${fDia}T00:00:00Z`).lt("occurred_at", `${fDia}T23:59:59.999Z`);
+    const { desde, hasta } = rangoDiaBogota(fDia);
+    visitQuery = visitQuery.gte("occurred_at", desde).lt("occurred_at", hasta);
   }
   const { data: visits } = await visitQuery;
   const presentIds = new Set((visits ?? []).map((v) => v.student_id).filter(Boolean) as string[]);

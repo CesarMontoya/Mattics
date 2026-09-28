@@ -4,6 +4,7 @@ export const prerender = false;
 import AdminLayout from "@/layouts/AdminLayout.astro";
 import { requireAdminPage } from "@/lib/clases/guard";
 import { shortTime } from "@/lib/clases/admin";
+import { rangoDiaBogota } from "@/lib/clases/fecha";
 
 const guard = await requireAdminPage(Astro);
 if (!guard) return Astro.redirect("/admin/login", 302);
@@ -31,7 +32,8 @@ if (fCurso) visitQuery = visitQuery.eq("resolved_course_id", fCurso);
 if (fAsignatura) visitQuery = visitQuery.eq("resolved_subject_id", fAsignatura);
 if (fClase) visitQuery = visitQuery.eq("resolved_schedule_id", fClase);
 if (fDia) {
-  visitQuery = visitQuery.gte("occurred_at", `${fDia}T00:00:00Z`).lt("occurred_at", `${fDia}T23:59:59.999Z`);
+  const { desde, hasta } = rangoDiaBogota(fDia);
+  visitQuery = visitQuery.gte("occurred_at", desde).lt("occurred_at", hasta);
 }
 const { data: visits } = await visitQuery;
 

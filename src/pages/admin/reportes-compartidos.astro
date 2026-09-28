@@ -3,6 +3,7 @@ export const prerender = false;
 
 import AdminLayout from "@/layouts/AdminLayout.astro";
 import { requireAdminPage } from "@/lib/clases/guard";
+import { formatFecha } from "@/lib/clases/fecha";
 
 const guard = await requireAdminPage(Astro);
 if (!guard) return Astro.redirect("/admin/login", 302);
@@ -120,7 +121,7 @@ const errorMsg =
               <td class="px-4 py-2">{scopeLabel(r)}</td>
               <td class="px-4 py-2 max-w-xs truncate text-muted-foreground">{url}</td>
               <td class="px-4 py-2 whitespace-nowrap text-muted-foreground">
-                {r.expires_at ? new Date(r.expires_at).toLocaleDateString("es-CO") : "Sin vencimiento"}
+                {r.expires_at ? formatFecha(r.expires_at) : "Sin vencimiento"}
               </td>
               <td class="px-4 py-2">
                 <span class:list={[

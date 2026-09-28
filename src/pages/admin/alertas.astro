@@ -4,6 +4,7 @@ export const prerender = false;
 import AdminLayout from "@/layouts/AdminLayout.astro";
 import { requireAdminPage } from "@/lib/clases/guard";
 import { shortTime } from "@/lib/clases/admin";
+import { formatFechaHora, rangoDiaBogota } from "@/lib/clases/fecha";
 
 const guard = await requireAdminPage(Astro);
 if (!guard) return Astro.redirect("/admin/login", 302);
@@ -34,7 +35,7 @@ function toRow(a: any) {
   const v = firstOf(a.visits);
   const st = v ? firstOf(v.students) : null;
   return {
-    hora: v?.occurred_at ? new Date(v.occurred_at).toLocaleString("es-CO") : "—",
+    hora: v?.occurred_at ? formatFechaHora(v.occurred_at) : "—",
     estudiante: st?.full_name ?? "—",
     ip: v?.ip ?? "—",
     clase: schedLabel(v?.resolved_schedule_id),
@@ -54,7 +55,13 @@ async function fetchAlerts(severity: "high" | "moderate") {
   let rows = (data ?? []) as any[];
   if (fCurso) rows = rows.filter((a) => firstOf(a.visits)?.resolved_course_id === fCurso);
   if (fAsignatura) rows = rows.filter((a) => firstOf(a.visits)?.resolved_subject_id === fAsignatura);
-  if (fDia) rows = rows.filter((a) => (firstOf(a.visits)?.occurred_at ?? "").startsWith(fDia));
+  if (fDia) {
+    const { desde, hasta } = rangoDiaBogota(fDia);
+    rows = rows.filter((a) => {
+      const ts = firstOf(a.visits)?.occurred_at ?? "";
+      return ts >= desde && ts < hasta;
+    });
+  }
   return rows.map(toRow);
 }
 

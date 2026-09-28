@@ -3,6 +3,7 @@ export const prerender = false;
 
 import AdminLayout from "@/layouts/AdminLayout.astro";
 import { requireAdminPage } from "@/lib/clases/guard";
+import { formatFecha } from "@/lib/clases/fecha";
 
 const guard = await requireAdminPage(Astro);
 if (!guard) return Astro.redirect("/admin/login", 302);
@@ -43,7 +44,7 @@ const detail = params.get("detail");
         {(courses ?? []).map((c) => (
           <tr class="border-t border-border">
             <td class="px-4 py-2 font-medium">{c.name}</td>
-            <td class="px-4 py-2 text-muted-foreground">{new Date(c.created_at).toLocaleDateString("es-CO")}</td>
+            <td class="px-4 py-2 text-muted-foreground">{formatFecha(c.created_at)}</td>
             <td class="px-4 py-2 text-right">
               <form method="POST" action="/api/admin/cursos" class="inline">
                 <input type="hidden" name="action" value="delete" />

@@ -4,6 +4,7 @@ export const prerender = false;
 import AdminLayout from "@/layouts/AdminLayout.astro";
 import { requireAdminPage } from "@/lib/clases/guard";
 import { shortTime } from "@/lib/clases/admin";
+import { formatFechaHora, rangoDiaBogota } from "@/lib/clases/fecha";
 
 const guard = await requireAdminPage(Astro);
 if (!guard) return Astro.redirect("/admin/login", 302);
@@ -32,7 +33,8 @@ if (fCurso) query = query.eq("resolved_course_id", fCurso);
 if (fAsignatura) query = query.eq("resolved_subject_id", fAsignatura);
 if (fClase) query = query.eq("resolved_schedule_id", fClase);
 if (fDia) {
-  query = query.gte("occurred_at", `${fDia}T00:00:00Z`).lt("occurred_at", `${fDia}T23:59:59.999Z`);
+  const { desde, hasta } = rangoDiaBogota(fDia);
+  query = query.gte("occurred_at", desde).lt("occurred_at", hasta);
 }
 
 const { data: visitsRaw, count } = await query;
@@ -48,7 +50,7 @@ function schedLabel(id: unknown) {
 }
 
 const rows = ((visitsRaw ?? []) as any[]).map((v) => ({
-  hora: v.occurred_at ? new Date(v.occurred_at).toLocaleString("es-CO") : "—",
+  hora: v.occurred_at ? formatFechaHora(v.occurred_at) : "—",
   estudiante: firstOf(v.students)?.full_name ?? "—",
   curso: firstOf(v.courses)?.name ?? "—",
   asignatura: firstOf(v.subjects)?.name ?? "—",
