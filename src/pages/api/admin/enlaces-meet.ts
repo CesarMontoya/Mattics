@@ -22,7 +22,9 @@ export const POST: APIRoute = async (context) => {
   }
   if (action === "delete") {
     const id = String(form.get("id") ?? "");
-    if (id) await auth.service.from("subject_meet_links").delete().eq("id", id);
+    if (!id) return redirect("/admin/enlaces-meet");
+    const { error } = await auth.service.from("subject_meet_links").delete().eq("id", id);
+    if (error) return redirect(`/admin/enlaces-meet?error=eliminar&detail=${encodeURIComponent(error.message)}`);
     return redirect("/admin/enlaces-meet?ok=1");
   }
   return redirect("/admin/enlaces-meet");
