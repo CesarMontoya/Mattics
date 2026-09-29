@@ -4,7 +4,7 @@ export const prerender = false;
 import Layout from "@/layouts/Layout.astro";
 import "@/styles/global.css";
 import { createSupabaseServiceRoleClient } from "@/lib/supabase/server";
-import { resolveScheduleFor, WEEKDAY_NAMES_ES, type Resolution } from "@/lib/clases/resolve";
+import { resolveScheduleFor, getBogotaParts, WEEKDAY_NAMES_ES, type Resolution } from "@/lib/clases/resolve";
 import { getClientIp, fetchIpGeo, parseUserAgent } from "@/lib/clases/telemetry";
 
 type LinkContext = {
@@ -213,10 +213,94 @@ if (!invalid && resolution?.meetUrl) {
 
 const pageTitle = invalid ? "Enlace no válido | Mattics" : "Tu clase virtual | Mattics";
 const next = resolution?.nextClass ?? null;
+
+// --- Horario semanal del curso (solo lectura, sin edición) ---
+type WeekBlock = {
+  subject: string;
+  teacher: string;
+  time: string;
+  top: number;
+  height: number;
+  isNext: boolean;
+};
+type WeekDay = { weekday: number; label: string; isToday: boolean; blocks: WeekBlock[] };
+
+const CAL_DAYS = [1, 2, 3, 4, 5]; // Lunes a Viernes
+const CAL_START_MIN = 6 * 60;
+const CAL_END_MIN = 18 * 60;
+const PX_PER_HOUR = 48;
+const CAL_HEIGHT = ((CAL_END_MIN - CAL_START_MIN) / 60) * PX_PER_HOUR;
+const calHours: number[] = [];
+for (let h = 6; h < 18; h++) calHours.push(h);
+
+function joinName(v: unknown): string | null {
+  const o = Array.isArray(v) ? v[0] : (v as { name?: string; full_name?: string } | null);
+  return o?.name ?? o?.full_name ?? null;
+}
+function toMinutes(t: string): number {
+  return Number(t.slice(0, 2)) * 60 + Number(t.slice(3, 5));
+}
+
+let weekDays: WeekDay[] = [];
+let nextTeacher: string | null = null;
+
+if (!invalid && context?.courseId) {
+  try {
+    const supabase2 = createSupabaseServiceRoleClient();
+    const schedRes = await supabase2
+      .from("schedules")
+      .select("id,weekday,start_time,end_time,subjects(id,name),teachers(id,full_name)")
+      .eq("course_id", context.courseId)
+      .order("weekday")
+      .order("start_time");
+    const rows = (schedRes.data ?? []) as Array<{
+      id: string;
+      weekday: number;
+      start_time: string;
+      end_time: string;
+      subjects: unknown;
+      teachers: unknown;
+    }>;
+    const todayWd = getBogotaParts(new Date()).weekday;
+    const nextId = next?.schedule?.id ?? null;
+    weekDays = CAL_DAYS.map((wd) => {
+      const dayName = WEEKDAY_NAMES_ES[wd] ?? "";
+      const blocks: WeekBlock[] = [];
+      for (const r of rows) {
+        if (r.weekday !== wd) continue;
+        const startMin = toMinutes(r.start_time);
+        const endMin = toMinutes(r.end_time);
+        if (r.id === nextId) nextTeacher = joinName(r.teachers);
+        blocks.push({
+          subject: joinName(r.subjects) ?? "Clase",
+          teacher: joinName(r.teachers) ?? "—",
+          time: `${r.start_time.slice(0, 5)} – ${r.end_time.slice(0, 5)}`,
+          top: Math.max(0, (startMin - CAL_START_MIN) * (PX_PER_HOUR / 60)),
+          height: Math.max(22, (endMin - startMin) * (PX_PER_HOUR / 60)),
+          isNext: r.id === nextId,
+        });
+      }
+      return {
+        weekday: wd,
+        label: dayName.charAt(0).toUpperCase() + dayName.slice(1),
+        isToday: wd === todayWd,
+        blocks,
+      };
+    });
+  } catch (err) {
+    console.error("[ir] week schedule failed:", err);
+    weekDays = [];
+  }
+}
 ---
 
 <Layout title={pageTitle}>
-  <main class="min-h-screen bg-background flex items-center justify-center px-6 py-16">
+  {!invalid && (
+    <div slot="head">
+      <meta http-equiv="refresh" content="60" />
+    </div>
+  )}
+  <main class="min-h-screen bg-background flex items-center justify-center px-4 sm:px-6 py-10 sm:py-16">
     {invalid ? (
       <section class="w-full max-w-lg text-center">
         <p class="text-sm font-medium text-muted-foreground mb-3">Mattics · Clases virtuales</p>
@@ -235,7 +319,7 @@ const next = resolution?.nextClass ?? null;
         <a href="/" class="text-primary hover:underline font-medium">← Volver al inicio</a>
       </section>
     ) : (
-      <section class="w-full max-w-lg">
+      <section class="w-full max-w-5xl">
         <p class="text-sm font-medium text-muted-foreground mb-3">Mattics · Clases virtuales</p>
         <h1 class="heading-1 mb-4">Hola, {context?.studentName ?? "estudiante"}</h1>
         <p class="text-muted-foreground leading-relaxed mb-2">
@@ -248,19 +332,88 @@ const next = resolution?.nextClass ?? null;
           automáticamente a la videollamada.
         </p>
 
-        <div class="rounded-xl border border-border bg-card p-6 mb-8">
-          <h2 class="font-semibold mb-2">Próxima clase</h2>
+        {/* Siguiente clase: sección amplia */}
+        <div class="rounded-xl border border-border bg-card p-6 sm:p-8 mb-8">
+          <p class="text-xs uppercase tracking-widest text-muted-foreground mb-2">Siguiente clase</p>
           {next ? (
-            <p class="text-foreground/80">
-              <span class="font-medium">{next.subject?.name ?? "Clase"}</span>
-              {" · "}
-              <span class="capitalize">{weekdayEs(next.schedule.weekday)}</span>
-              {` ${shortTime(next.schedule.start_time)} – ${shortTime(next.schedule.end_time)}`}
-            </p>
+            <div>
+              <p class="text-2xl sm:text-3xl font-bold mb-2">{next.subject?.name ?? "Clase"}</p>
+              <div class="flex flex-wrap gap-x-5 gap-y-1 text-muted-foreground">
+                <span>
+                  Día: <strong class="text-foreground capitalize">{weekdayEs(next.schedule.weekday)}</strong>
+                </span>
+                <span>
+                  Hora: <strong class="text-foreground">{`${shortTime(next.schedule.start_time)} – ${shortTime(next.schedule.end_time)}`}</strong>
+                </span>
+                {nextTeacher && (
+                  <span>
+                    Docente: <strong class="text-foreground">{nextTeacher}</strong>
+                  </span>
+                )}
+              </div>
+            </div>
           ) : (
             <p class="text-muted-foreground">Aún no hay una próxima clase programada. Tu docente te avisará.</p>
           )}
         </div>
+
+        {/* Horario semanal del curso (solo lectura) */}
+        {weekDays.length > 0 && (
+          <div class="mb-8">
+            <h2 class="text-xl font-semibold mb-1">
+              Horario de tu curso{context?.courseName ? ` · ${context.courseName}` : ""}
+            </h2>
+            <p class="text-sm text-muted-foreground mb-4">Asignatura, docente y franja horaria de cada sesión.</p>
+            <div class="overflow-x-auto rounded-xl border border-border bg-card">
+              <div class="min-w-[680px]">
+                <div
+                  class="grid border-b border-border bg-muted/50"
+                  style={`grid-template-columns: 56px repeat(${weekDays.length}, minmax(0, 1fr))`}
+                >
+                  <div />
+                  {weekDays.map((d) => (
+                    <div class={`px-2 py-2 text-center text-sm font-semibold ${d.isToday ? "text-primary" : ""}`}>
+                      {d.label}{d.isToday ? " · hoy" : ""}
+                    </div>
+                  ))}
+                </div>
+                <div
+                  class="grid"
+                  style={`grid-template-columns: 56px repeat(${weekDays.length}, minmax(0, 1fr))`}
+                >
+                  <div aria-hidden>
+                    {calHours.map((h) => (
+                      <div class="border-t border-border/60 pr-2 text-right text-[11px] leading-[48px] text-muted-foreground h-12">
+                        {String(h).padStart(2, "0")}:00
+                      </div>
+                    ))}
+                  </div>
+                  {weekDays.map((d) => (
+                    <div class={`relative border-l border-border/60 ${d.isToday ? "bg-primary/[0.04]" : ""}`}>
+                      {calHours.map((h) => (
+                        <div class="block h-12 w-full border-t border-border/60" />
+                      ))}
+                      <div class="pointer-events-none absolute inset-0">
+                        {d.blocks.map((b) => (
+                          <div
+                            class={`absolute overflow-hidden rounded-md border-l-4 px-1.5 py-1 ${b.isNext ? "border-primary bg-primary/10" : "border-blue-500 bg-blue-500/10"}`}
+                            style={`top: ${b.top}px; height: ${b.height}px; left: 2px; right: 2px;`}
+                          >
+                            <span class="block truncate text-xs font-semibold leading-tight">{b.subject}</span>
+                            <span class="block truncate text-[11px] leading-tight text-muted-foreground">{b.teacher}</span>
+                            {b.height >= 56 && (
+                              <span class="block truncate text-[11px] leading-tight text-muted-foreground">{b.time}</span>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         <aside class="rounded-xl bg-muted p-5 text-sm text-muted-foreground leading-relaxed mb-8">
           <h2 class="font-semibold text-foreground mb-1">Aviso de privacidad — Ley 1581 de 2012</h2>
