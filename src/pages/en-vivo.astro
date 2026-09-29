@@ -1,0 +1,299 @@
+---
+export const prerender = false;
+
+import Layout from "@/layouts/Layout.astro";
+import "@/styles/global.css";
+import { createSupabaseServiceRoleClient } from "@/lib/clases/guard";
+import { BOGOTA_TZ, rangoDiaBogota } from "@/lib/clases/fecha";
+import { shortTime, weekdayLabel } from "@/lib/clases/admin";
+
+const params = Astro.url.searchParams;
+const fCursos = params.getAll("curso").map((s) => s.trim()).filter(Boolean);
+const fAsignatura = (params.get("asignatura") ?? "").trim();
+const fClase = (params.get("clase") ?? "").trim();
+const rawDia = (params.get("dia") ?? "").trim();
+
+const DIA_RE = /^\d{4}-\d{2}-\d{2}$/;
+const hoyBogota = new Date().toLocaleDateString("en-CA", { timeZone: BOGOTA_TZ });
+const fDia = DIA_RE.test(rawDia) ? rawDia : hoyBogota;
+const esHoy = fDia === hoyBogota;
+
+// dia siempre tiene valor (hoy por defecto), así que no cuenta como filtro útil.
+const hasFilter = fCursos.length > 0 || fAsignatura !== "" || fClase !== "";
+
+// Lectura pública directa con service-role (solo server), como admin/asistencia.astro.
+const service = createSupabaseServiceRoleClient();
+
+const [{ data: courses }, { data: subjects }, { data: schedules }] = await Promise.all([
+  service.from("courses").select("id,name").order("name"),
+  service.from("subjects").select("id,name").order("name"),
+  service
+    .from("schedules")
+    .select("id,course_id,subject_id,weekday,start_time,end_time")
+    .order("weekday")
+    .order("start_time"),
+]);
+
+type Student = { id: string; full_name: string; course_id: string | null };
+type Visit = { student_id: string | null; occurred_at: string; resolved_schedule_id: string | null };
+
+let students: Student[] = [];
+if (hasFilter) {
+  let studentQuery = service
+    .from("students")
+    .select("id,full_name,course_id")
+    .order("full_name")
+    .limit(5000);
+  if (fCursos.length > 0) studentQuery = studentQuery.in("course_id", fCursos);
+  const { data } = await studentQuery;
+  students = (data ?? []) as Student[];
+}
+
+let visits: Visit[] = [];
+if (hasFilter) {
+  const { desde, hasta } = rangoDiaBogota(fDia);
+  let visitQuery = service
+    .from("visits")
+    .select("student_id,occurred_at,resolved_schedule_id")
+    .gte("occurred_at", desde)
+    .lt("occurred_at", hasta)
+    .order("occurred_at")
+    .limit(5000);
+  if (fCursos.length > 0) visitQuery = visitQuery.in("resolved_course_id", fCursos);
+  if (fAsignatura) visitQuery = visitQuery.eq("resolved_subject_id", fAsignatura);
+  if (fClase) visitQuery = visitQuery.eq("resolved_schedule_id", fClase);
+  const { data } = await visitQuery;
+  visits = (data ?? []) as Visit[];
+}
+
+// Primera visita del día por estudiante = hora de entrada.
+const primeraVisita = new Map<string, string>();
+for (const v of visits) {
+  if (!v.student_id || !v.occurred_at) continue;
+  if (!primeraVisita.has(v.student_id)) primeraVisita.set(v.student_id, v.occurred_at);
+}
+
+const horaBogota = (iso: string) =>
+  new Date(iso).toLocaleTimeString("es-CO", { timeZone: BOGOTA_TZ, hour12: false });
+
+const present = students
+  .filter((s) => primeraVisita.has(s.id))
+  .map((s) => ({ ...s, hora: horaBogota(primeraVisita.get(s.id)! ) }))
+  .sort((a, b) => (a.hora < b.hora ? -1 : a.hora > b.hora ? 1 : 0));
+const absent = students.filter((s) => !primeraVisita.has(s.id));
+
+// Bloques por curso: si hay varios cursos seleccionados se ven diferenciados.
+const courseIds = fCursos.length > 0
+  ? fCursos
+  : [...new Set(students.map((s) => s.course_id).filter(Boolean) as string[])];
+const porCurso = courseIds.map((id) => ({
+  id,
+  nombre: (courses ?? []).find((c) => c.id === id)?.name ?? "Curso",
+  presentes: present.filter((s) => s.course_id === id),
+  ausentes: absent.filter((s) => s.course_id === id),
+}));
+
+// Encabezado de la clase según filtros.
+const courseById = new Map((courses ?? []).map((c) => [c.id, c.name]));
+const subjectById = new Map((subjects ?? []).map((s) => [s.id, s.name]));
+const schedule = (schedules ?? []).find((s) => s.id === fClase) ?? null;
+const subjectName = fAsignatura
+  ? (subjectById.get(fAsignatura) ?? "Asignatura seleccionada")
+  : schedule?.subject_id
+    ? (subjectById.get(schedule.subject_id) ?? null)
+    : null;
+const courseNames = fCursos.map((id) => courseById.get(id) ?? null);
+const diaLabel = esHoy
+  ? "Hoy"
+  : new Date(`${fDia}T12:00:00Z`).toLocaleDateString("es-CO", {
+      timeZone: BOGOTA_TZ,
+      weekday: "long",
+      day: "numeric",
+      month: "long",
+    });
+
+// Selectores cuando no hay filtro útil (navegable sin saber los ids).
+const cursoHref = (id: string) => `/en-vivo?curso=${encodeURIComponent(id)}&dia=${fDia}`;
+const asignaturaHref = (id: string) =>
+  `/en-vivo?asignatura=${encodeURIComponent(id)}&dia=${fDia}`;
+const claseHref = (s: { id: string; course_id: string | null; subject_id: string | null }) => {
+  const p = new URLSearchParams();
+  if (s.course_id) p.set("curso", s.course_id);
+  if (s.subject_id) p.set("asignatura", s.subject_id);
+  p.set("clase", s.id);
+  p.set("dia", fDia);
+  return `/en-vivo?${p.toString()}`;
+};
+const selfUrl = Astro.url.pathname + Astro.url.search;
+
+const titulo = subjectName
+  ? `En vivo · ${subjectName}`
+  : courseNames.length > 0
+    ? `En vivo · ${courseNames.filter(Boolean).join(", ")}`
+    : "En vivo · Mattics";
+---
+
+<Layout title={titulo}>
+  <div slot="head">
+    <meta name="robots" content="noindex,nofollow" />
+    <meta http-equiv="refresh" content="60" />
+  </div>
+
+  <main class="max-w-4xl mx-auto px-4 py-6 sm:px-6 sm:py-8">
+    <p class="text-xs uppercase tracking-widest text-muted-foreground mb-1">Mattics · Clase en vivo</p>
+
+    {hasFilter ? (
+      <header class="mb-6">
+        <h1 class="text-2xl sm:text-3xl font-bold">
+          {subjectName ?? "Clase en vivo"}
+        </h1>
+        <div class="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
+          {courseNames.length > 0 && (
+            <span>
+              Curso{courseNames.length > 1 ? "s" : ""}:{" "}
+              <strong class="text-foreground">{courseNames.map((n) => n ?? "—").join(", ")}</strong>
+            </span>
+          )}
+          {schedule && (
+            <span>
+              Horario: <strong class="text-foreground">{weekdayLabel(schedule.weekday)} {shortTime(schedule.start_time)}–{shortTime(schedule.end_time)}</strong>
+            </span>
+          )}
+          <span>
+            Día: <strong class="text-foreground">{diaLabel}</strong>
+            <span class="ml-1 text-xs">({fDia})</span>
+          </span>
+        </div>
+        <p class="mt-3 text-sm">
+          <span class="inline-flex items-center gap-1.5 rounded-full border border-green-200 bg-green-50 px-3 py-1 font-medium text-green-800">
+            <span class="relative flex h-2 w-2">
+              <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-500 opacity-75"></span>
+              <span class="relative inline-flex rounded-full h-2 w-2 bg-green-600"></span>
+            </span>
+            En vivo · se actualiza cada 60 s
+          </span>
+        </p>
+        <p class="mt-2 text-sm">
+          <a href="/en-vivo" class="underline underline-offset-2">Cambiar de curso o clase</a>
+        </p>
+      </header>
+    ) : (
+      <header class="mb-6">
+        <h1 class="text-2xl sm:text-3xl font-bold">Clase en vivo</h1>
+        <p class="text-sm text-muted-foreground mt-2">
+          Elige un curso para ver quién ya entró a la clase de hoy ({hoyBogota}).
+        </p>
+      </header>
+    )}
+
+    <details class="rounded-xl border border-border bg-card p-4 mb-6 text-sm">
+      <summary class="font-medium cursor-pointer">Cómo compartir este enlace (filtros por URL)</summary>
+      <div class="mt-2 space-y-1 text-muted-foreground">
+        <p><code class="text-foreground">curso</code> (repetible), <code class="text-foreground">asignatura</code>, <code class="text-foreground">dia</code> (AAAA-MM-DD, hoy por defecto), <code class="text-foreground">clase</code> (id de horario).</p>
+        <p>Ejemplo: <code class="text-foreground break-all">/en-vivo?curso=ID_CURSO&amp;dia={hoyBogota}</code></p>
+        <p>Esta página: <code class="text-foreground break-all">{selfUrl}</code></p>
+      </div>
+    </details>
+
+    {!hasFilter ? (
+      <section>
+        <h2 class="font-semibold mb-3">Cursos</h2>
+        <div class="grid gap-3 sm:grid-cols-2">
+          {(courses ?? []).map((c) => (
+            <a
+              href={cursoHref(c.id)}
+              class="rounded-xl border border-border bg-card p-5 hover:border-primary transition-colors"
+            >
+              <span class="font-semibold text-lg">Curso {c.name}</span>
+              <span class="block text-sm text-muted-foreground mt-1">Ver clase en vivo →</span>
+            </a>
+          ))}
+          {(courses ?? []).length === 0 && (
+            <p class="text-sm text-muted-foreground">Todavía no hay cursos creados.</p>
+          )}
+        </div>
+
+        <details class="rounded-xl border border-border bg-card p-4 mt-4 text-sm">
+          <summary class="font-medium cursor-pointer">Filtrar por asignatura</summary>
+          <ul class="mt-2 divide-y divide-border">
+            {(subjects ?? []).map((s) => (
+              <li>
+                <a href={asignaturaHref(s.id)} class="block py-2 hover:underline underline-offset-2">{s.name} →</a>
+              </li>
+            ))}
+          </ul>
+        </details>
+
+        <details class="rounded-xl border border-border bg-card p-4 mt-4 text-sm">
+          <summary class="font-medium cursor-pointer">Filtrar por clase (horario)</summary>
+          <ul class="mt-2 divide-y divide-border">
+            {(schedules ?? []).map((s) => (
+              <li>
+                <a href={claseHref(s)} class="block py-2 hover:underline underline-offset-2">
+                  {courseById.get(s.course_id ?? "") ?? "Curso"} · {subjectById.get(s.subject_id ?? "") ?? "Asignatura"} · {weekdayLabel(s.weekday)} {shortTime(s.start_time)}–{shortTime(s.end_time)} →
+                </a>
+              </li>
+            ))}
+          </ul>
+        </details>
+      </section>
+    ) : (
+      <section>
+        <div class="grid grid-cols-3 gap-3 mb-6 text-center">
+          <div class="rounded-xl border border-green-200 bg-green-50 p-3">
+            <p class="text-2xl font-bold text-green-800">{present.length}</p>
+            <p class="text-xs sm:text-sm text-green-700">Presentes</p>
+          </div>
+          <div class="rounded-xl border border-border bg-card p-3">
+            <p class="text-2xl font-bold">{absent.length}</p>
+            <p class="text-xs sm:text-sm text-muted-foreground">Ausentes</p>
+          </div>
+          <div class="rounded-xl border border-border bg-card p-3">
+            <p class="text-2xl font-bold">{students.length}</p>
+            <p class="text-xs sm:text-sm text-muted-foreground">Total</p>
+          </div>
+        </div>
+
+        <div class="grid gap-6">
+          {porCurso.map((c) => (
+          <section>
+            <h2 class="text-lg font-semibold mb-1">Curso {c.nombre}</h2>
+            <p class="text-sm text-muted-foreground mb-3">{c.presentes.length} presentes · {c.ausentes.length} ausentes</p>
+            <div class="grid gap-6 md:grid-cols-2">
+          <div class="rounded-xl border border-green-200 overflow-hidden">
+            <h3 class="bg-green-50 px-4 py-2 font-semibold text-green-800">Presentes ({c.presentes.length})</h3>
+            <table class="w-full text-sm">
+              <thead>
+                <tr class="text-left text-xs text-muted-foreground border-b border-border">
+                  <th scope="col" class="px-4 py-2 font-medium">Estudiante</th>
+                  <th scope="col" class="px-4 py-2 font-medium text-right">Hora de entrada</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-border">
+                {c.presentes.map((s) => (
+                  <tr>
+                    <td class="px-4 py-2">{s.full_name}</td>
+                    <td class="px-4 py-2 text-right tabular-nums font-medium">{s.hora}</td>
+                  </tr>
+                ))}
+                {c.presentes.length === 0 && (
+                  <tr><td colspan="2" class="px-4 py-4 text-sm text-muted-foreground">Nadie ha entrado todavía.</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+          <div class="rounded-xl border border-border overflow-hidden">
+            <h3 class="bg-muted px-4 py-2 font-semibold">Ausentes ({c.ausentes.length})</h3>
+            <ul class="divide-y divide-border">
+              {c.ausentes.map((s) => (<li class="px-4 py-2 text-sm">{s.full_name}</li>))}
+              {c.ausentes.length === 0 && (<li class="px-4 py-4 text-sm text-muted-foreground">Sin ausentes. ¡Todos dentro!</li>)}
+            </ul>
+          </div>
+            </div>
+          </section>
+          ))}
+        </div>
+      </section>
+    )}
+  </main>
+</Layout>
