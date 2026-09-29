@@ -16,6 +16,7 @@ const rawDia = (params.get("dia") ?? "").trim();
 const DIA_RE = /^\d{4}-\d{2}-\d{2}$/;
 const hoyBogota = new Date().toLocaleDateString("en-CA", { timeZone: BOGOTA_TZ });
 const fDia = DIA_RE.test(rawDia) ? rawDia : hoyBogota;
+const diaElegido = DIA_RE.test(rawDia);
 const esHoy = fDia === hoyBogota;
 
 // dia siempre tiene valor (hoy por defecto), así que no cuenta como filtro útil.
@@ -112,10 +113,46 @@ const diaLabel = esHoy
       month: "long",
     });
 
-// Selectores cuando no hay filtro útil (navegable sin saber los ids).
-const cursoHref = (id: string) => `/en-vivo?curso=${encodeURIComponent(id)}&dia=${fDia}`;
-const asignaturaHref = (id: string) =>
-  `/en-vivo?asignatura=${encodeURIComponent(id)}&dia=${fDia}`;
+// Navegación por pasos: asignatura → fecha → grupos.
+const paso: "asignatura" | "fecha" | "grupos" | "vista" =
+  !fAsignatura && fCursos.length === 0 && !fClase
+    ? "asignatura"
+    : !diaElegido
+      ? "fecha"
+      : fCursos.length === 0 && !fClase
+        ? "grupos"
+        : "vista";
+
+// Próximos 7 días (Bogotá) para el paso de fecha.
+const baseHoy = new Date(`${hoyBogota}T12:00:00Z`);
+const proximosDias = Array.from({ length: 7 }, (_, i) => {
+  const d = new Date(baseHoy);
+  d.setUTCDate(baseHoy.getUTCDate() + i);
+  return d.toISOString().slice(0, 10);
+});
+const etiquetaDiaCorto = (day: string) =>
+  day === hoyBogota
+    ? "Hoy"
+    : new Date(`${day}T12:00:00Z`).toLocaleDateString("es-CO", {
+        timeZone: BOGOTA_TZ,
+        weekday: "long",
+        day: "numeric",
+        month: "short",
+      });
+
+// Conserva los params actuales y añade/cambia los indicados.
+const conParams = (extra: Record<string, string | string[]>) => {
+  const p = new URLSearchParams();
+  const cursos = (extra.curso ?? fCursos) as string | string[];
+  for (const c of Array.isArray(cursos) ? cursos : [cursos]) if (c) p.append("curso", c);
+  const asig = (extra.asignatura ?? fAsignatura) as string;
+  if (asig) p.set("asignatura", asig);
+  const dia = (extra.dia ?? (diaElegido ? fDia : "")) as string;
+  if (dia) p.set("dia", dia);
+  const cla = (extra.clase ?? fClase) as string;
+  if (cla) p.set("clase", cla);
+  return `/en-vivo?${p.toString()}`;
+};
 const claseHref = (s: { id: string; course_id: string | null; subject_id: string | null }) => {
   const p = new URLSearchParams();
   if (s.course_id) p.set("curso", s.course_id);
@@ -142,7 +179,7 @@ const titulo = subjectName
   <main class="max-w-4xl mx-auto px-4 py-6 sm:px-6 sm:py-8">
     <p class="text-xs uppercase tracking-widest text-muted-foreground mb-1">Mattics · Clase en vivo</p>
 
-    {hasFilter ? (
+    {paso === "vista" && (
       <header class="mb-6">
         <h1 class="text-2xl sm:text-3xl font-bold">
           {subjectName ?? "Clase en vivo"}
@@ -177,11 +214,20 @@ const titulo = subjectName
           <a href="/en-vivo" class="underline underline-offset-2">Cambiar de curso o clase</a>
         </p>
       </header>
-    ) : (
+    )}
+    {paso === "fecha" && (
       <header class="mb-6">
-        <h1 class="text-2xl sm:text-3xl font-bold">Clase en vivo</h1>
+        <h1 class="text-2xl sm:text-3xl font-bold">{subjectName ?? "Clase en vivo"}</h1>
         <p class="text-sm text-muted-foreground mt-2">
-          Elige un curso para ver quién ya entró a la clase de hoy ({hoyBogota}).
+          Paso 2 de 3: elige la fecha de la clase. <a href="/en-vivo" class="underline underline-offset-2">Cambiar asignatura</a>
+        </p>
+      </header>
+    )}
+    {paso === "grupos" && (
+      <header class="mb-6">
+        <h1 class="text-2xl sm:text-3xl font-bold">{subjectName ?? "Clase en vivo"} · {diaLabel}</h1>
+        <p class="text-sm text-muted-foreground mt-2">
+          Paso 3 de 3: elige los grupos. <a href={conParams({ dia: "", curso: [] })} class="underline underline-offset-2">Cambiar fecha</a>
         </p>
       </header>
     )}
@@ -195,49 +241,71 @@ const titulo = subjectName
       </div>
     </details>
 
-    {!hasFilter ? (
+    {paso === "asignatura" && (
       <section>
-        <h2 class="font-semibold mb-3">Cursos</h2>
+        <h2 class="font-semibold mb-1">Paso 1 de 3 · Asignatura</h2>
+        <p class="text-sm text-muted-foreground mb-3">Elige la asignatura de la clase.</p>
         <div class="grid gap-3 sm:grid-cols-2">
-          {(courses ?? []).map((c) => (
+          {(subjects ?? []).map((s) => (
             <a
-              href={cursoHref(c.id)}
+              href={conParams({ asignatura: s.id, dia: "", curso: [], clase: "" })}
               class="rounded-xl border border-border bg-card p-5 hover:border-primary transition-colors"
             >
-              <span class="font-semibold text-lg">Curso {c.name}</span>
-              <span class="block text-sm text-muted-foreground mt-1">Ver clase en vivo →</span>
+              <span class="font-semibold text-lg">{s.name}</span>
+              <span class="block text-sm text-muted-foreground mt-1">Elegir fecha →</span>
             </a>
           ))}
-          {(courses ?? []).length === 0 && (
-            <p class="text-sm text-muted-foreground">Todavía no hay cursos creados.</p>
+          {(subjects ?? []).length === 0 && (
+            <p class="text-sm text-muted-foreground">Todavía no hay asignaturas creadas.</p>
           )}
         </div>
-
-        <details class="rounded-xl border border-border bg-card p-4 mt-4 text-sm">
-          <summary class="font-medium cursor-pointer">Filtrar por asignatura</summary>
-          <ul class="mt-2 divide-y divide-border">
-            {(subjects ?? []).map((s) => (
-              <li>
-                <a href={asignaturaHref(s.id)} class="block py-2 hover:underline underline-offset-2">{s.name} →</a>
-              </li>
-            ))}
-          </ul>
-        </details>
-
-        <details class="rounded-xl border border-border bg-card p-4 mt-4 text-sm">
-          <summary class="font-medium cursor-pointer">Filtrar por clase (horario)</summary>
-          <ul class="mt-2 divide-y divide-border">
-            {(schedules ?? []).map((s) => (
-              <li>
-                <a href={claseHref(s)} class="block py-2 hover:underline underline-offset-2">
-                  {courseById.get(s.course_id ?? "") ?? "Curso"} · {subjectById.get(s.subject_id ?? "") ?? "Asignatura"} · {weekdayLabel(s.weekday)} {shortTime(s.start_time)}–{shortTime(s.end_time)} →
-                </a>
-              </li>
-            ))}
-          </ul>
-        </details>
       </section>
-    ) : (
+    )}
+
+    {paso === "fecha" && (
+      <section>
+        <h2 class="font-semibold mb-1">Paso 2 de 3 · Fecha</h2>
+        <p class="text-sm text-muted-foreground mb-3">Elige el día de la clase de {subjectName ?? "la asignatura"}.</p>
+        <ul class="grid gap-2">
+          {proximosDias.map((d) => (
+            <li>
+              <a
+                href={conParams({ dia: d })}
+                class="flex items-center justify-between rounded-xl border border-border bg-card px-5 py-3 hover:border-primary transition-colors"
+              >
+                <span class="font-medium capitalize">{etiquetaDiaCorto(d)}</span>
+                <span class="text-sm text-muted-foreground">{d} →</span>
+              </a>
+            </li>
+          ))}
+        </ul>
+      </section>
+    )}
+
+    {paso === "grupos" && (
+      <section>
+        <h2 class="font-semibold mb-1">Paso 3 de 3 · Grupos</h2>
+        <p class="text-sm text-muted-foreground mb-3">Marca uno o varios grupos y abre la vista en vivo.</p>
+        <form method="get" action="/en-vivo" class="rounded-xl border border-border bg-card p-5">
+          <input type="hidden" name="asignatura" value={fAsignatura} />
+          <input type="hidden" name="dia" value={fDia} />
+          {fClase && (<input type="hidden" name="clase" value={fClase} />)}
+          <div class="grid gap-2 sm:grid-cols-2 mb-4">
+            {(courses ?? []).map((c) => (
+              <label class="flex items-center gap-3 rounded-lg border border-border px-4 py-3 text-sm font-medium cursor-pointer hover:border-primary">
+                <input type="checkbox" name="curso" value={c.id} class="h-4 w-4" />
+                Curso {c.name}
+              </label>
+            ))}
+          </div>
+          <button type="submit" class="w-full sm:w-auto rounded-lg bg-primary text-primary-foreground px-5 py-2.5 text-sm font-medium">
+            Ver en vivo →
+          </button>
+        </form>
+      </section>
+    )}
+
+    {paso === "vista" && (
       <section>
         <div class="grid grid-cols-3 gap-3 mb-6 text-center">
           <div class="rounded-xl border border-green-200 bg-green-50 p-3">
