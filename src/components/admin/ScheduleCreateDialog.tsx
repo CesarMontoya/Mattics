@@ -1,9 +1,11 @@
 import * as React from "react";
 import * as Dialog from "@radix-ui/react-dialog";
+import { X } from "lucide-react";
 import { WEEKDAY_OPTIONS, MEET_URL_PREFIX } from "@/lib/clases/admin";
 import type {
   PlannerCourse,
   PlannerMeetLink,
+  PlannerSchedule,
   PlannerSubject,
   PlannerTeacher,
 } from "./SchedulePlanner";
@@ -22,6 +24,8 @@ type Props = {
   teachers: PlannerTeacher[];
   meetLinks: PlannerMeetLink[];
   initial: ScheduleDialogInitial;
+  /** When set, the dialog edits this session instead of creating new ones. */
+  editing?: PlannerSchedule | null;
 };
 
 function addMinutes(t: string, mins: number): string {
@@ -61,7 +65,9 @@ export default function ScheduleCreateDialog({
   teachers,
   meetLinks,
   initial,
+  editing = null,
 }: Props) {
+  const isEdit = editing != null;
   const [courseIds, setCourseIds] = React.useState<string[]>(initial.courseIds);
   const [courseOpen, setCourseOpen] = React.useState(false);
   const [courseSearch, setCourseSearch] = React.useState("");
@@ -77,28 +83,48 @@ export default function ScheduleCreateDialog({
   const [linkTouched, setLinkTouched] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [saving, setSaving] = React.useState(false);
+  const [deleting, setDeleting] = React.useState(false);
+  const [confirmingDelete, setConfirmingDelete] = React.useState(false);
   const lastPrefill = React.useRef("");
 
-  // Reset every time the dialog opens (new cell context).
+  // Reset every time the dialog opens: edit context or new cell context.
   React.useEffect(() => {
     if (!open) return;
-    setCourseIds(initial.courseIds);
+    if (editing) {
+      const subj = editing.subject_id ?? "";
+      const teach = editing.teacher_id ?? "";
+      const url = resolveLinkUrl(meetLinks, subj, teach);
+      setCourseIds([editing.course_id]);
+      setSubjectId(subj);
+      setTeacherId(teach);
+      setWeekday(editing.weekday);
+      setStart(editing.start_time.slice(0, 5));
+      setEnd(editing.end_time.slice(0, 5));
+      setEndTouched(true);
+      setMeetUrl(url);
+      lastPrefill.current = url;
+      setLinkTouched(false);
+    } else {
+      setCourseIds(initial.courseIds);
+      setSubjectId("");
+      setTeacherId("");
+      setWeekday(initial.weekday);
+      setStart(initial.start);
+      setEnd(addMinutes(initial.start, 55));
+      setEndTouched(false);
+      setMeetUrl("");
+      setLinkTouched(false);
+      lastPrefill.current = "";
+    }
     setCourseOpen(false);
     setCourseSearch("");
-    setSubjectId("");
     setSubjectOpen(false);
     setSubjectSearch("");
-    setTeacherId("");
-    setWeekday(initial.weekday);
-    setStart(initial.start);
-    setEnd(addMinutes(initial.start, 55));
-    setEndTouched(false);
-    setMeetUrl("");
-    setLinkTouched(false);
-    lastPrefill.current = "";
+    setConfirmingDelete(false);
     setError(null);
     setSaving(false);
-  }, [open, initial.courseIds, initial.weekday, initial.start]);
+    setDeleting(false);
+  }, [open, editing, initial.courseIds, initial.weekday, initial.start]);
 
   // Teachers linked to the selected subject via subject_meet_links.
   const linkedTeacherIds = React.useMemo(() => {
@@ -168,7 +194,7 @@ export default function ScheduleCreateDialog({
 
   const handleSave = async () => {
     setError(null);
-    if (courseIds.length === 0) {
+    if (!isEdit && courseIds.length === 0) {
       setError("Selecciona al menos un curso.");
       return;
     }
@@ -183,19 +209,31 @@ export default function ScheduleCreateDialog({
     }
     setSaving(true);
     try {
+      const payload = isEdit
+        ? {
+            action: "update",
+            id: editing.id,
+            subject_id: subjectId || null,
+            teacher_id: teacherId || null,
+            weekday,
+            start_time: start,
+            end_time: end,
+            meet_url: url,
+          }
+        : {
+            action: "create-many",
+            course_ids: courseIds,
+            subject_id: subjectId || null,
+            teacher_id: teacherId || null,
+            weekday,
+            start_time: start,
+            end_time: end,
+            meet_url: url,
+          };
       const res = await fetch("/api/admin/horarios", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "create-many",
-          course_ids: courseIds,
-          subject_id: subjectId || null,
-          teacher_id: teacherId || null,
-          weekday,
-          start_time: start,
-          end_time: end,
-          meet_url: url,
-        }),
+        body: JSON.stringify(payload),
       });
       const data = (await res.json().catch(() => null)) as {
         error?: string;
@@ -212,24 +250,76 @@ export default function ScheduleCreateDialog({
     }
   };
 
+  const handleDelete = async () => {
+    if (!editing) return;
+    if (!confirmingDelete) {
+      setConfirmingDelete(true);
+      return;
+    }
+    setError(null);
+    setDeleting(true);
+    try {
+      const res = await fetch("/api/admin/horarios", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "delete", id: editing.id }),
+      });
+      const data = (await res.json().catch(() => null)) as {
+        error?: string;
+      } | null;
+      if (!res.ok) {
+        setError(data?.error ?? "No se pudo eliminar el horario.");
+        setDeleting(false);
+        setConfirmingDelete(false);
+        return;
+      }
+      window.location.reload();
+    } catch {
+      setError("Error de red. Inténtalo de nuevo.");
+      setDeleting(false);
+      setConfirmingDelete(false);
+    }
+  };
+
+  const editingCourseName =
+    editing != null
+      ? (courses.find((c) => c.id === editing.course_id)?.name ?? editing.course_name)
+      : null;
+
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 z-50 bg-black/50" />
         <Dialog.Content className="fixed left-1/2 top-1/2 z-50 w-[calc(100vw-1.5rem)] max-w-lg max-h-[92vh] overflow-y-auto -translate-x-1/2 -translate-y-1/2 rounded-xl border border-border bg-card p-5 shadow-lg">
-          <Dialog.Title className="text-lg font-semibold">
-            Nuevo horario
+          <Dialog.Close asChild>
+            <button
+              type="button"
+              aria-label="Cerrar y cancelar"
+              className="absolute right-3 top-3 rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </Dialog.Close>
+          <Dialog.Title className="text-lg font-semibold pr-8">
+            {isEdit ? "Editar horario" : "Nuevo horario"}
           </Dialog.Title>
           <Dialog.Description className="text-sm text-muted-foreground mb-4">
-            Se creará la misma franja en cada curso seleccionado.
+            {isEdit
+              ? `Sesión de ${editingCourseName ?? "curso"}. Guarda los cambios o elimina la sesión.`
+              : "Se creará la misma franja en cada curso seleccionado."}
           </Dialog.Description>
 
           <div className="grid gap-4">
-            {/* Cursos: multi-combobox with tags */}
+            {/* Cursos: multi-combobox with tags (locked in edit mode) */}
             <div>
               <span className={labelCls} id="dlg-courses-label">
-                Cursos *
+                {isEdit ? "Curso" : "Cursos *"}
               </span>
+              {isEdit ? (
+                <p className="rounded-lg border border-input bg-muted/60 px-3 py-2 text-sm font-medium">
+                  {editingCourseName ?? "—"}
+                </p>
+              ) : (
               <div className="rounded-lg border border-input bg-background px-2 py-1.5">
                 <div className="flex flex-wrap gap-1.5">
                   {courseIds.map((id) => {
@@ -301,6 +391,7 @@ export default function ScheduleCreateDialog({
                   )}
                 </div>
               </div>
+              )}
             </div>
 
             {/* Asignatura: single searchable combobox */}
@@ -520,25 +611,49 @@ export default function ScheduleCreateDialog({
               </p>
             )}
 
-            <div className="flex justify-end gap-2">
-              <Dialog.Close asChild>
+            <div className="flex items-center justify-between gap-2">
+              {isEdit ? (
                 <button
                   type="button"
-                  className="rounded-lg border border-border px-4 py-2 text-sm hover:bg-muted"
+                  onClick={handleDelete}
+                  disabled={saving || deleting}
+                  className={`rounded-lg border px-4 py-2 text-sm font-medium disabled:opacity-50 ${
+                    confirmingDelete
+                      ? "border-red-500 bg-red-600 text-white hover:bg-red-700"
+                      : "border-red-200 text-red-600 hover:bg-red-50"
+                  }`}
                 >
-                  Cancelar
+                  {deleting
+                    ? "Eliminando…"
+                    : confirmingDelete
+                      ? "Confirmar eliminación"
+                      : "Borrar"}
                 </button>
-              </Dialog.Close>
-              <button
-                type="button"
-                onClick={handleSave}
-                disabled={saving}
-                className="rounded-lg bg-primary text-primary-foreground px-4 py-2 text-sm font-medium disabled:opacity-50"
-              >
-                {saving
-                  ? "Guardando…"
-                  : `Guardar${courseIds.length > 1 ? ` en ${courseIds.length} cursos` : ""}`}
-              </button>
+              ) : (
+                <span />
+              )}
+              <div className="flex gap-2">
+                <Dialog.Close asChild>
+                  <button
+                    type="button"
+                    className="rounded-lg border border-border px-4 py-2 text-sm hover:bg-muted"
+                  >
+                    Cancelar
+                  </button>
+                </Dialog.Close>
+                <button
+                  type="button"
+                  onClick={handleSave}
+                  disabled={saving || deleting}
+                  className="rounded-lg bg-primary text-primary-foreground px-4 py-2 text-sm font-medium disabled:opacity-50"
+                >
+                  {saving
+                    ? "Guardando…"
+                    : isEdit
+                      ? "Guardar cambios"
+                      : `Guardar${courseIds.length > 1 ? ` en ${courseIds.length} cursos` : ""}`}
+                </button>
+              </div>
             </div>
           </div>
         </Dialog.Content>

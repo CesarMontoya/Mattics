@@ -65,26 +65,76 @@ async function handleCreateMany(service: Service, body: any) {
     return jsonResponse({ error: "No se pudo crear el horario." }, 500);
   }
 
-  // Upsert del enlace Meet (select-then-update-or-insert: sin constraint único).
-  if (meetUrl && subjectId) {
-    let query = service
-      .from("subject_meet_links")
-      .select("id")
-      .eq("subject_id", subjectId)
-      .order("created_at", { ascending: true });
-    query = teacherId ? query.eq("teacher_id", teacherId) : query.is("teacher_id", null);
-    const { data: existing } = await query;
-    const first = Array.isArray(existing) ? existing[0] : null;
-    if (first?.id) {
-      await service.from("subject_meet_links").update({ url: meetUrl }).eq("id", first.id);
-    } else {
-      await service
-        .from("subject_meet_links")
-        .insert({ subject_id: subjectId, teacher_id: teacherId, url: meetUrl });
-    }
-  }
+  await upsertMeetLink(service, subjectId, teacherId, meetUrl);
 
   return jsonResponse({ ok: true, created: rows.length });
+}
+
+async function upsertMeetLink(
+  service: Service,
+  subjectId: string | null,
+  teacherId: string | null,
+  meetUrl: string,
+) {
+  // Upsert del enlace Meet (select-then-update-or-insert: sin constraint único).
+  if (!meetUrl || !subjectId) return;
+  let query = service
+    .from("subject_meet_links")
+    .select("id")
+    .eq("subject_id", subjectId)
+    .order("created_at", { ascending: true });
+  query = teacherId ? query.eq("teacher_id", teacherId) : query.is("teacher_id", null);
+  const { data: existing } = await query;
+  const first = Array.isArray(existing) ? existing[0] : null;
+  if (first?.id) {
+    await service.from("subject_meet_links").update({ url: meetUrl }).eq("id", first.id);
+  } else {
+    await service
+      .from("subject_meet_links")
+      .insert({ subject_id: subjectId, teacher_id: teacherId, url: meetUrl });
+  }
+}
+async function handleUpdate(service: Service, body: any) {
+  const id = typeof body?.id === "string" ? body.id.trim() : "";
+  const subjectId =
+    typeof body?.subject_id === "string" && body.subject_id.trim()
+      ? body.subject_id.trim()
+      : null;
+  const teacherId =
+    typeof body?.teacher_id === "string" && body.teacher_id.trim()
+      ? body.teacher_id.trim()
+      : null;
+  const weekday = body?.weekday;
+  const startTime = body?.start_time;
+  const endTime = body?.end_time;
+  const meetUrl =
+    typeof body?.meet_url === "string" ? body.meet_url.trim() : "";
+
+  if (!id) return jsonResponse({ error: "Falta el id." }, 400);
+  if (!isValidWeekday(weekday)) return jsonResponse({ error: "Día inválido (0–6)." }, 400);
+  if (!isTimeString(startTime) || !isTimeString(endTime) || startTime >= endTime) {
+    return jsonResponse({ error: "La hora de inicio debe ser anterior a la de fin." }, 400);
+  }
+  if (meetUrl && !meetUrl.startsWith(MEET_URL_PREFIX)) {
+    return jsonResponse({ error: `El enlace debe comenzar con ${MEET_URL_PREFIX}` }, 400);
+  }
+
+  const { error: updateError } = await service
+    .from("schedules")
+    .update({
+      subject_id: subjectId,
+      teacher_id: teacherId,
+      weekday,
+      start_time: startTime.trim(),
+      end_time: endTime.trim(),
+    })
+    .eq("id", id);
+  if (updateError) {
+    return jsonResponse({ error: "No se pudo actualizar el horario." }, 500);
+  }
+
+  await upsertMeetLink(service, subjectId, teacherId, meetUrl);
+  return jsonResponse({ ok: true });
 }
 
 async function handleDeleteJson(service: Service, body: any) {
@@ -103,6 +153,7 @@ export const POST: APIRoute = async (context) => {
     const body = (await context.request.json().catch(() => null)) as any;
     const action = typeof body?.action === "string" ? body.action : "";
     if (action === "create-many") return handleCreateMany(auth.service, body);
+    if (action === "update") return handleUpdate(auth.service, body);
     if (action === "delete") return handleDeleteJson(auth.service, body);
     return jsonResponse({ error: "Acción desconocida." }, 400);
   }

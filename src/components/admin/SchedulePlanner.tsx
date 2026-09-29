@@ -123,7 +123,7 @@ export default function SchedulePlanner({
     weekday: 1,
     start: "06:00",
   });
-  const [deleting, setDeleting] = React.useState<string | null>(null);
+  const [editing, setEditing] = React.useState<PlannerSchedule | null>(null);
 
   const toggleCourse = (id: string) => {
     setSelected((prev) =>
@@ -142,6 +142,7 @@ export default function SchedulePlanner({
   };
 
   const openCreate = (weekday: number, hour: number) => {
+    setEditing(null);
     setDraft({
       courseIds: selected,
       weekday,
@@ -150,26 +151,9 @@ export default function SchedulePlanner({
     setDialogOpen(true);
   };
 
-  const handleDelete = async (s: PlannerSchedule) => {
-    const label = `${s.subject_name ?? "Sin asignatura"} · ${weekdayLabel(s.weekday)} ${shortTime(s.start_time)}–${shortTime(s.end_time)} (${s.course_name})`;
-    if (!window.confirm(`¿Eliminar este horario?\n${label}`)) return;
-    setDeleting(s.id);
-    try {
-      const res = await fetch("/api/admin/horarios", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "delete", id: s.id }),
-      });
-      if (!res.ok) {
-        window.alert("No se pudo eliminar el horario.");
-        setDeleting(null);
-        return;
-      }
-      window.location.reload();
-    } catch {
-      window.alert("Error de red. Inténtalo de nuevo.");
-      setDeleting(null);
-    }
+  const openEdit = (s: PlannerSchedule) => {
+    setEditing(s);
+    setDialogOpen(true);
   };
 
   const hours: number[] = [];
@@ -300,9 +284,8 @@ export default function SchedulePlanner({
                           <button
                             key={b.id}
                             type="button"
-                            onClick={() => handleDelete(b)}
-                            disabled={deleting === b.id}
-                            title={`${b.subject_name ?? "Sin asignatura"} · ${b.course_name} · ${shortTime(b.start_time)}–${shortTime(b.end_time)} — clic para eliminar`}
+                            onClick={() => openEdit(b)}
+                            title={`${b.subject_name ?? "Sin asignatura"} · ${b.course_name} · ${shortTime(b.start_time)}–${shortTime(b.end_time)} — clic para editar`}
                             className={`pointer-events-auto absolute overflow-hidden rounded-md border-l-4 border px-1.5 py-1 text-left shadow-sm hover:brightness-95 focus-visible:outline-2 ${palette?.box ?? ""}`}
                             style={{
                               top: b.top,
@@ -335,7 +318,7 @@ export default function SchedulePlanner({
         </div>
         <p className="mt-2 text-xs text-muted-foreground">
           Toca una celda vacía para crear una franja. Toca un bloque existente
-          para eliminarlo.
+          para editarlo o eliminarlo.
         </p>
       </section>
 
@@ -347,6 +330,7 @@ export default function SchedulePlanner({
         teachers={teachers}
         meetLinks={meetLinks}
         initial={draft}
+        editing={editing}
       />
     </div>
   );
