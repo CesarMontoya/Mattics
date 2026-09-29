@@ -245,7 +245,7 @@ export default function SchedulePlanner({
           <div className="min-w-[760px]">
             <div
               className="grid border-b border-border bg-muted/50"
-              style={{ gridTemplateColumns: "64px repeat(6, minmax(0, 1fr))" }}
+              style={{ gridTemplateColumns: `64px repeat(${DAYS.length}, minmax(0, 1fr))` }}
             >
               <div />
               {DAYS.map((d) => (
@@ -260,7 +260,7 @@ export default function SchedulePlanner({
 
             <div
               className="grid"
-              style={{ gridTemplateColumns: "64px repeat(6, minmax(0, 1fr))" }}
+              style={{ gridTemplateColumns: `64px repeat(${DAYS.length}, minmax(0, 1fr))` }}
             >
               {/* Gutter de horas */}
               <div aria-hidden>
