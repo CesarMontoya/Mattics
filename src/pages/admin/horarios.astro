@@ -2,74 +2,96 @@
 export const prerender = false;
 
 import AdminLayout from "@/layouts/AdminLayout.astro";
+import SchedulePlanner from "@/components/admin/SchedulePlanner";
 import { requireAdminPage } from "@/lib/clases/guard";
-import { WEEKDAY_OPTIONS, weekdayLabel, shortTime } from "@/lib/clases/admin";
+import { weekdayLabel, shortTime } from "@/lib/clases/admin";
 
 const guard = await requireAdminPage(Astro);
 if (!guard) return Astro.redirect("/admin/login", 302);
 
-const [{ data: courses }, { data: subjects }, { data: schedules }] = await Promise.all([
+const [
+  { data: courses },
+  { data: subjects },
+  { data: teachers },
+  { data: meetLinks },
+  { data: schedules },
+] = await Promise.all([
   guard.service.from("courses").select("id,name").order("name"),
   guard.service.from("subjects").select("id,name").order("name"),
-  guard.service.from("schedules").select("id,course_id,subject_id,weekday,start_time,end_time,courses(id,name),subjects(id,name)").order("weekday").order("start_time"),
+  guard.service.from("teachers").select("id,full_name").order("full_name"),
+  guard.service.from("subject_meet_links").select("id,subject_id,teacher_id,url,label").order("created_at"),
+  guard.service.from("schedules").select("id,course_id,subject_id,teacher_id,weekday,start_time,end_time,courses(id,name),subjects(id,name),teachers(id,full_name)").order("weekday").order("start_time"),
 ]);
 
-const nameOf = (row: { courses: unknown }, key: "courses" | "subjects") => {
-  const v = (row as Record<string, unknown>)[key];
-  const o = Array.isArray(v) ? v[0] : (v as { name?: string } | null);
-  return o?.name ?? "—";
-};
+function relName(row: Record<string, unknown>, key: string): string | null {
+  const v = row[key];
+  const o = Array.isArray(v) ? v[0] : (v as { name?: string; full_name?: string } | null);
+  return o?.name ?? o?.full_name ?? null;
+}
+
+const plannerCourses = (courses ?? []).map((c) => ({ id: c.id, name: c.name }));
+const plannerSubjects = (subjects ?? []).map((s) => ({ id: s.id, name: s.name }));
+const plannerTeachers = (teachers ?? []).map((t) => ({ id: t.id, full_name: t.full_name }));
+const plannerLinks = (meetLinks ?? []).map((l) => ({
+  id: l.id,
+  subject_id: l.subject_id,
+  teacher_id: l.teacher_id ?? null,
+  url: l.url,
+  label: l.label ?? null,
+}));
+const plannerSchedules = (schedules ?? []).map((s) => {
+  const r = s as unknown as Record<string, unknown>;
+  return {
+    id: s.id,
+    course_id: s.course_id,
+    course_name: relName(r, "courses") ?? "—",
+    subject_id: s.subject_id ?? null,
+    subject_name: relName(r, "subjects"),
+    teacher_id: s.teacher_id ?? null,
+    teacher_name: relName(r, "teachers"),
+    weekday: s.weekday,
+    start_time: s.start_time,
+    end_time: s.end_time,
+  };
+});
+
+const params = Astro.url.searchParams;
+const ok = params.get("ok");
+const err = params.get("error");
 ---
 
 <AdminLayout title="Horarios · Admin Mattics" active="horarios">
-  <h1 class="text-3xl font-bold mb-6">Horarios</h1>
+  <h1 class="text-3xl font-bold mb-2">Horarios</h1>
+  <p class="text-sm text-muted-foreground mb-6">Planifica la semana por curso. Toca una celda vacía para crear una franja en varios cursos a la vez.</p>
 
-  <form method="POST" action="/api/admin/horarios" class="rounded-xl border border-border bg-card p-5 mb-8 grid gap-3 sm:grid-cols-[1fr_1fr_1fr_1fr_1fr_auto] sm:items-end">
-    <div>
-      <label for="course_id" class="text-sm font-medium block mb-1">Curso</label>
-      <select id="course_id" name="course_id" required class="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm">
-        <option value="">Seleccionar…</option>
-        {(courses ?? []).map((c) => (<option value={c.id}>{c.name}</option>))}
-      </select>
-    </div>
-    <div>
-      <label for="subject_id" class="text-sm font-medium block mb-1">Asignatura</label>
-      <select id="subject_id" name="subject_id" class="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm">
-        <option value="">Sin asignatura</option>
-        {(subjects ?? []).map((s) => (<option value={s.id}>{s.name}</option>))}
-      </select>
-    </div>
-    <div>
-      <label for="weekday" class="text-sm font-medium block mb-1">Día (0=Dom … 6=Sáb)</label>
-      <select id="weekday" name="weekday" required class="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm">
-        {WEEKDAY_OPTIONS.map((w) => (<option value={w.value}>{w.value} · {w.label}</option>))}
-      </select>
-    </div>
-    <div>
-      <label for="start_time" class="text-sm font-medium block mb-1">Inicio</label>
-      <input id="start_time" name="start_time" type="time" required class="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm" />
-    </div>
-    <div>
-      <label for="end_time" class="text-sm font-medium block mb-1">Fin</label>
-      <input id="end_time" name="end_time" type="time" required class="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm" />
-    </div>
-    <input type="hidden" name="action" value="create" />
-    <button type="submit" class="rounded-lg bg-primary text-primary-foreground px-4 py-2 text-sm font-medium">Crear</button>
-  </form>
+  {ok && <p class="text-sm text-green-700 bg-green-50 border border-green-200 rounded-lg px-3 py-2 mb-4">Guardado correctamente.</p>}
+  {err && <p class="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2 mb-4">No se pudo completar (código: {err}).</p>}
 
+  <SchedulePlanner
+    client:load
+    courses={plannerCourses}
+    subjects={plannerSubjects}
+    teachers={plannerTeachers}
+    meetLinks={plannerLinks}
+    schedules={plannerSchedules}
+  />
+
+  <h2 class="text-lg font-semibold mt-10 mb-3">Todas las franjas (auditoría)</h2>
   <div class="rounded-xl border border-border overflow-hidden">
     <table class="w-full text-sm">
       <thead class="bg-muted">
         <tr>
           <th class="text-left px-4 py-2">Curso</th><th class="text-left px-4 py-2">Asignatura</th>
+          <th class="text-left px-4 py-2">Docente</th>
           <th class="text-left px-4 py-2">Día</th><th class="text-left px-4 py-2">Hora</th><th class="px-4 py-2"></th>
         </tr>
       </thead>
       <tbody>
-        {(schedules ?? []).map((s) => (
+        {plannerSchedules.map((s) => (
           <tr class="border-t border-border">
-            <td class="px-4 py-2 font-medium">{nameOf(s, "courses")}</td>
-            <td class="px-4 py-2">{nameOf(s, "subjects")}</td>
+            <td class="px-4 py-2 font-medium">{s.course_name}</td>
+            <td class="px-4 py-2">{s.subject_name ?? "—"}</td>
+            <td class="px-4 py-2 text-muted-foreground">{s.teacher_name ?? "—"}</td>
             <td class="px-4 py-2">{weekdayLabel(s.weekday)} ({s.weekday})</td>
             <td class="px-4 py-2 text-muted-foreground">{shortTime(s.start_time)} – {shortTime(s.end_time)}</td>
             <td class="px-4 py-2 text-right">
@@ -81,8 +103,8 @@ const nameOf = (row: { courses: unknown }, key: "courses" | "subjects") => {
             </td>
           </tr>
         ))}
-        {(schedules ?? []).length === 0 && (
-          <tr><td colspan="5" class="px-4 py-6 text-center text-muted-foreground">Sin horarios todavía.</td></tr>
+        {plannerSchedules.length === 0 && (
+          <tr><td colspan="6" class="px-4 py-6 text-center text-muted-foreground">Sin horarios todavía.</td></tr>
         )}
       </tbody>
     </table>
