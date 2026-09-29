@@ -35,7 +35,7 @@ type Props = {
   schedules: PlannerSchedule[];
 };
 
-const DAYS = [1, 2, 3, 4, 5, 6]; // Lunes a Sábado
+const DAYS = [1, 2, 3, 4, 5]; // Lunes a Viernes
 const START_HOUR = 6;
 const END_HOUR = 18; // filas 06:00–17:00, la última termina a las 18:00
 const HOUR_PX = 48;
@@ -228,7 +228,7 @@ export default function SchedulePlanner({
       {/* Sección 2: calendario semanal */}
       <section aria-label="Calendario semanal">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-          <h2 className="text-lg font-semibold">Calendario · Lunes a Sábado</h2>
+          <h2 className="text-lg font-semibold">Calendario · Lunes a Viernes</h2>
           <button
             type="button"
             onClick={() => {
