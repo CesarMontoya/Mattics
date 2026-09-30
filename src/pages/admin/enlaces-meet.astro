@@ -7,14 +7,19 @@ import { requireAdminPage } from "@/lib/clases/guard";
 const guard = await requireAdminPage(Astro);
 if (!guard) return Astro.redirect("/admin/login", 302);
 
-const [{ data: subjects }, { data: links }] = await Promise.all([
+const [{ data: subjects }, { data: teachers }, { data: links }] = await Promise.all([
   guard.service.from("subjects").select("id,name").order("name"),
-  guard.service.from("subject_meet_links").select("id,url,label,subject_id,created_at,subjects(id,name)").order("created_at", { ascending: false }),
+  guard.service.from("teachers").select("id,full_name").order("full_name"),
+  guard.service.from("subject_meet_links").select("id,url,label,subject_id,created_at,subjects(id,name),teachers(id,full_name)").order("created_at", { ascending: false }),
 ]);
 
 const subjectName = (l: { subjects: unknown }) => {
   const s = Array.isArray(l.subjects) ? l.subjects[0] : (l.subjects as { name?: string } | null);
   return s?.name ?? "—";
+};
+const teacherName = (l: { teachers: unknown }) => {
+  const t = Array.isArray(l.teachers) ? l.teachers[0] : (l.teachers as { full_name?: string } | null);
+  return t?.full_name ?? "—";
 };
 
 const params = Astro.url.searchParams;
@@ -30,12 +35,19 @@ const detail = params.get("detail");
   {err && <p class="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2 mb-4">No se pudo completar (código: {err}{detail ? `: ${detail}` : ""}).</p>}
   <p class="text-sm text-muted-foreground mb-4">Solo se aceptan URL que comiencen con <code>https://meet.google.com/</code>.</p>
 
-  <form method="POST" action="/api/admin/enlaces-meet" class="rounded-xl border border-border bg-card p-5 mb-8 grid gap-3 sm:grid-cols-[1fr_2fr_1fr_auto] sm:items-end">
+  <form method="POST" action="/api/admin/enlaces-meet" class="rounded-xl border border-border bg-card p-5 mb-8 grid gap-3 sm:grid-cols-[1fr_1fr_2fr_1fr_auto] sm:items-end">
     <div>
       <label for="subject_id" class="text-sm font-medium block mb-1">Asignatura</label>
       <select id="subject_id" name="subject_id" required class="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm">
         <option value="">Seleccionar…</option>
         {(subjects ?? []).map((s) => (<option value={s.id}>{s.name}</option>))}
+      </select>
+    </div>
+    <div>
+      <label for="teacher_id" class="text-sm font-medium block mb-1">Docente (opcional)</label>
+      <select id="teacher_id" name="teacher_id" class="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm">
+        <option value="">Sin docente</option>
+        {(teachers ?? []).map((t) => (<option value={t.id}>{t.full_name}</option>))}
       </select>
     </div>
     <div>
@@ -55,12 +67,13 @@ const detail = params.get("detail");
   <div class="rounded-xl border border-border overflow-hidden">
     <table class="w-full text-sm">
       <thead class="bg-muted">
-        <tr><th class="text-left px-4 py-2">Asignatura</th><th class="text-left px-4 py-2">URL</th><th class="text-left px-4 py-2">Etiqueta</th><th class="px-4 py-2"></th></tr>
+        <tr><th class="text-left px-4 py-2">Asignatura</th><th class="text-left px-4 py-2">Docente</th><th class="text-left px-4 py-2">URL</th><th class="text-left px-4 py-2">Etiqueta</th><th class="px-4 py-2"></th></tr>
       </thead>
       <tbody>
         {(links ?? []).map((l) => (
           <tr class="border-t border-border">
             <td class="px-4 py-2 font-medium">{subjectName(l)}</td>
+            <td class="px-4 py-2 text-muted-foreground">{teacherName(l)}</td>
             <td class="px-4 py-2 text-muted-foreground">
               <span class="flex items-center gap-2 min-w-0">
                 <a href={l.url} target="_blank" rel="noopener" class="text-primary hover:underline break-all">{l.url}</a>
@@ -83,7 +96,7 @@ const detail = params.get("detail");
           </tr>
         ))}
         {(links ?? []).length === 0 && (
-          <tr><td colspan="4" class="px-4 py-6 text-center text-muted-foreground">Sin enlaces todavía.</td></tr>
+          <tr><td colspan="5" class="px-4 py-6 text-center text-muted-foreground">Sin enlaces todavía.</td></tr>
         )}
       </tbody>
     </table>

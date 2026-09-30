@@ -75,6 +75,10 @@ export default function ScheduleCreateDialog({
   const [subjectOpen, setSubjectOpen] = React.useState(false);
   const [subjectSearch, setSubjectSearch] = React.useState("");
   const [teacherId, setTeacherId] = React.useState("");
+  const [teacherList, setTeacherList] = React.useState<PlannerTeacher[]>(teachers);
+  const [newTeacher, setNewTeacher] = React.useState("");
+  const [creatingTeacher, setCreatingTeacher] = React.useState(false);
+  const [showCreateTeacher, setShowCreateTeacher] = React.useState(false);
   const [meetUrl, setMeetUrl] = React.useState("");
   const [weekday, setWeekday] = React.useState(initial.weekday);
   const [start, setStart] = React.useState(initial.start);
@@ -90,6 +94,10 @@ export default function ScheduleCreateDialog({
   // Reset every time the dialog opens: edit context or new cell context.
   React.useEffect(() => {
     if (!open) return;
+    setTeacherList(teachers);
+    setNewTeacher("");
+    setShowCreateTeacher(false);
+    setCreatingTeacher(false);
     if (editing) {
       const subj = editing.subject_id ?? "";
       const teach = editing.teacher_id ?? "";
@@ -124,7 +132,7 @@ export default function ScheduleCreateDialog({
     setError(null);
     setSaving(false);
     setDeleting(false);
-  }, [open, editing, initial.courseIds, initial.weekday, initial.start]);
+  }, [open, editing, teachers, initial.courseIds, initial.weekday, initial.start]);
 
   // Teachers linked to the selected subject via subject_meet_links.
   const linkedTeacherIds = React.useMemo(() => {
@@ -136,15 +144,54 @@ export default function ScheduleCreateDialog({
   }, [subjectId, meetLinks]);
 
   const linkedTeachers = React.useMemo(
-    () => teachers.filter((t) => linkedTeacherIds.includes(t.id)),
-    [teachers, linkedTeacherIds],
+    () => teacherList.filter((t) => linkedTeacherIds.includes(t.id)),
+    [teacherList, linkedTeacherIds],
   );
   const useLinkedList = linkedTeachers.length > 0;
-  const teacherOptions = useLinkedList ? linkedTeachers : teachers;
 
   const selectedSubject = subjects.find((s) => s.id === subjectId) ?? null;
   const selectedTeacher =
-    teachers.find((t) => t.id === teacherId) ?? null;
+    teacherList.find((t) => t.id === teacherId) ?? null;
+
+  // Create a teacher inline without leaving the dialog.
+  const handleCreateTeacher = async () => {
+    const name = newTeacher.trim();
+    if (!name) {
+      setError("Escribe el nombre del docente.");
+      return;
+    }
+    setCreatingTeacher(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/admin/docentes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "create", full_name: name }),
+      });
+      const data = (await res.json().catch(() => null)) as {
+        error?: string;
+        teacher?: PlannerTeacher;
+      } | null;
+      if (!res.ok || !data?.teacher) {
+        setError(data?.error ?? "No se pudo crear el docente.");
+        setCreatingTeacher(false);
+        return;
+      }
+      const t = data.teacher;
+      setTeacherList((prev) =>
+        (prev.some((x) => x.id === t.id) ? prev : [...prev, t]).sort((a, b) =>
+          a.full_name.localeCompare(b.full_name, "es"),
+        ),
+      );
+      setNewTeacher("");
+      setShowCreateTeacher(false);
+      setCreatingTeacher(false);
+      handleTeacherSelect(t.id);
+    } catch {
+      setError("Error de red. Inténtalo de nuevo.");
+      setCreatingTeacher(false);
+    }
+  };
 
   // When the subject changes: default teacher to first linked one + prefill link.
   const handleSubjectSelect = (id: string) => {
@@ -490,7 +537,7 @@ export default function ScheduleCreateDialog({
                         className={`${inputCls} py-1.5`}
                       >
                         <option value="">Sin docente asignado</option>
-                        {teachers.map((t) => (
+                        {teacherList.map((t) => (
                           <option key={t.id} value={t.id}>
                             {t.full_name}
                           </option>
@@ -522,7 +569,7 @@ export default function ScheduleCreateDialog({
                     className={`${inputCls} py-1.5`}
                   >
                     <option value="">Sin docente asignado</option>
-                    {teachers.map((t) => (
+                    {teacherList.map((t) => (
                       <option key={t.id} value={t.id}>
                         {t.full_name}
                       </option>
@@ -530,6 +577,53 @@ export default function ScheduleCreateDialog({
                   </select>
                 </div>
               )}
+              {/* Crear docente sin salir del diálogo */}
+              <div className="mt-2">
+                {!showCreateTeacher ? (
+                  <button
+                    type="button"
+                    onClick={() => setShowCreateTeacher(true)}
+                    className="text-xs text-primary hover:underline underline-offset-2"
+                  >
+                    ＋ Crear docente nuevo
+                  </button>
+                ) : (
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={newTeacher}
+                      onChange={(e) => setNewTeacher(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          void handleCreateTeacher();
+                        }
+                      }}
+                      placeholder="Nombre del docente"
+                      maxLength={100}
+                      className={`${inputCls} py-1.5`}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => void handleCreateTeacher()}
+                      disabled={creatingTeacher}
+                      className="shrink-0 rounded-lg bg-primary text-primary-foreground px-3 py-1.5 text-xs font-medium disabled:opacity-50"
+                    >
+                      {creatingTeacher ? "Creando…" : "Crear"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowCreateTeacher(false);
+                        setNewTeacher("");
+                      }}
+                      className="shrink-0 rounded-lg border border-border px-3 py-1.5 text-xs hover:bg-muted"
+                    >
+                      Cancelar
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* Enlace */}

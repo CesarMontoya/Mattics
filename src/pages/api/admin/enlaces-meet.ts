@@ -12,12 +12,13 @@ export const POST: APIRoute = async (context) => {
 
   if (action === "create") {
     const subject_id = String(form.get("subject_id") ?? "").trim();
+    const teacher_id = String(form.get("teacher_id") ?? "").trim() || null;
     const url = String(form.get("url") ?? "").trim();
     const label = String(form.get("label") ?? "").trim() || null;
     if (!subject_id || !url.startsWith(MEET_URL_PREFIX)) {
       return redirect("/admin/enlaces-meet?error=url");
     }
-    await auth.service.from("subject_meet_links").insert({ subject_id, url, label });
+    await auth.service.from("subject_meet_links").insert({ subject_id, teacher_id, url, label });
     return redirect("/admin/enlaces-meet?ok=1");
   }
   if (action === "delete") {
