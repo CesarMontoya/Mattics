@@ -4,6 +4,7 @@ export const prerender = false;
 import Layout from "@/layouts/Layout.astro";
 import "@/styles/global.css";
 import { createSupabaseServiceRoleClient } from "@/lib/supabase/server";
+import { hourLabel12, timeRange12 } from "@/lib/clases/admin";
 import { resolveScheduleFor, getBogotaParts, WEEKDAY_NAMES_ES, type Resolution } from "@/lib/clases/resolve";
 import { getClientIp, fetchIpGeo, parseUserAgent } from "@/lib/clases/telemetry";
 
@@ -226,12 +227,12 @@ type WeekBlock = {
 type WeekDay = { weekday: number; label: string; isToday: boolean; blocks: WeekBlock[] };
 
 const CAL_DAYS = [1, 2, 3, 4, 5]; // Lunes a Viernes
-const CAL_START_MIN = 6 * 60;
+const CAL_START_MIN = 12 * 60;
 const CAL_END_MIN = 18 * 60;
 const PX_PER_HOUR = 48;
 const CAL_HEIGHT = ((CAL_END_MIN - CAL_START_MIN) / 60) * PX_PER_HOUR;
 const calHours: number[] = [];
-for (let h = 6; h < 18; h++) calHours.push(h);
+for (let h = 12; h < 18; h++) calHours.push(h);
 
 function joinName(v: unknown): string | null {
   const o = Array.isArray(v) ? v[0] : (v as { name?: string; full_name?: string } | null);
@@ -274,7 +275,7 @@ if (!invalid && context?.courseId) {
         blocks.push({
           subject: joinName(r.subjects) ?? "Clase",
           teacher: joinName(r.teachers) ?? "—",
-          time: `${r.start_time.slice(0, 5)} – ${r.end_time.slice(0, 5)}`,
+          time: timeRange12(r.start_time, r.end_time),
           top: Math.max(0, (startMin - CAL_START_MIN) * (PX_PER_HOUR / 60)),
           height: Math.max(22, (endMin - startMin) * (PX_PER_HOUR / 60)),
           isNext: r.id === nextId,
@@ -343,7 +344,7 @@ if (!invalid && context?.courseId) {
                   Día: <strong class="text-foreground capitalize">{weekdayEs(next.schedule.weekday)}</strong>
                 </span>
                 <span>
-                  Hora: <strong class="text-foreground">{`${shortTime(next.schedule.start_time)} – ${shortTime(next.schedule.end_time)}`}</strong>
+                  Hora: <strong class="text-foreground">{timeRange12(next.schedule.start_time, next.schedule.end_time)}</strong>
                 </span>
                 {nextTeacher && (
                   <span>
@@ -384,12 +385,12 @@ if (!invalid && context?.courseId) {
                   <div aria-hidden>
                     {calHours.map((h) => (
                       <div class="border-t border-border/60 pr-2 text-right text-[11px] leading-[48px] text-muted-foreground h-12">
-                        {String(h).padStart(2, "0")}:00
+                        {hourLabel12(h)}
                       </div>
                     ))}
                   </div>
                   {weekDays.map((d) => (
-                    <div class={`relative border-l border-border/60 ${d.isToday ? "bg-primary/[0.04]" : ""}`}>
+                    <div class={`relative overflow-hidden border-l border-border/60 ${d.isToday ? "bg-primary/[0.04]" : ""}`}>
                       {calHours.map((h) => (
                         <div class="block h-12 w-full border-t border-border/60" />
                       ))}

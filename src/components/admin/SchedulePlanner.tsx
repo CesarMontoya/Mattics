@@ -1,5 +1,5 @@
 import * as React from "react";
-import { shortTime, weekdayLabel } from "@/lib/clases/admin";
+import { hourLabel12, timeRange12, weekdayLabel } from "@/lib/clases/admin";
 import ScheduleCreateDialog, {
   type ScheduleDialogInitial,
 } from "./ScheduleCreateDialog";
@@ -36,8 +36,8 @@ type Props = {
 };
 
 const DAYS = [1, 2, 3, 4, 5]; // Lunes a Viernes
-const START_HOUR = 6;
-const END_HOUR = 18; // filas 06:00–17:00, la última termina a las 18:00
+const START_HOUR = 12;
+const END_HOUR = 18; // filas 12:00–17:00, la última termina a las 18:00
 const HOUR_PX = 48;
 
 const PALETTE = [
@@ -121,7 +121,7 @@ export default function SchedulePlanner({
   const [draft, setDraft] = React.useState<ScheduleDialogInitial>({
     courseIds: [],
     weekday: 1,
-    start: "06:00",
+    start: "12:00",
   });
   const [editing, setEditing] = React.useState<PlannerSchedule | null>(null);
 
@@ -216,7 +216,7 @@ export default function SchedulePlanner({
           <button
             type="button"
             onClick={() => {
-              setDraft({ courseIds: selected, weekday: 1, start: "06:00" });
+              setDraft({ courseIds: selected, weekday: 1, start: "12:00" });
               setDialogOpen(true);
             }}
             className="rounded-lg bg-primary text-primary-foreground px-4 py-2 text-sm font-medium"
@@ -253,7 +253,7 @@ export default function SchedulePlanner({
                     key={h}
                     className="border-t border-border/60 pr-2 text-right text-[11px] leading-[48px] text-muted-foreground h-12"
                   >
-                    {String(h).padStart(2, "0")}:00
+                    {hourLabel12(h)}
                   </div>
                 ))}
               </div>
@@ -265,14 +265,14 @@ export default function SchedulePlanner({
                 return (
                   <div
                     key={d}
-                    className="relative border-l border-border/60"
+                    className="relative overflow-hidden border-l border-border/60"
                   >
                     {hours.map((h) => (
                       <button
                         key={h}
                         type="button"
-                        title={`Crear horario el ${weekdayLabel(d)} a las ${String(h).padStart(2, "0")}:00`}
-                        aria-label={`Crear horario el ${weekdayLabel(d)} a las ${String(h).padStart(2, "0")}:00`}
+                        title={`Crear horario el ${weekdayLabel(d)} a las ${hourLabel12(h)}`}
+                        aria-label={`Crear horario el ${weekdayLabel(d)} a las ${hourLabel12(h)}`}
                         onClick={() => openCreate(d, h)}
                         className="block h-12 w-full border-t border-border/60 text-left hover:bg-muted/60 focus-visible:bg-muted/60 focus-visible:outline-none"
                       />
@@ -285,7 +285,7 @@ export default function SchedulePlanner({
                             key={b.id}
                             type="button"
                             onClick={() => openEdit(b)}
-                            title={`${b.subject_name ?? "Sin asignatura"} · ${b.course_name} · ${shortTime(b.start_time)}–${shortTime(b.end_time)} — clic para editar`}
+                            title={`${b.subject_name ?? "Sin asignatura"} · ${b.course_name} · ${timeRange12(b.start_time, b.end_time)} — clic para editar`}
                             className={`pointer-events-auto absolute overflow-hidden rounded-md border-l-4 border px-1.5 py-1 text-left shadow-sm hover:brightness-95 focus-visible:outline-2 ${palette?.box ?? ""}`}
                             style={{
                               top: b.top,
@@ -298,8 +298,7 @@ export default function SchedulePlanner({
                               {b.subject_name ?? "Sin asignatura"}
                             </span>
                             <span className="block truncate text-[11px] leading-tight text-muted-foreground">
-                              {shortTime(b.start_time)}–
-                              {shortTime(b.end_time)} · {b.course_name}
+                              {timeRange12(b.start_time, b.end_time)} · {b.course_name}
                             </span>
                             {b.height >= 56 && b.teacher_name && (
                               <span className="block truncate text-[11px] leading-tight text-muted-foreground">
