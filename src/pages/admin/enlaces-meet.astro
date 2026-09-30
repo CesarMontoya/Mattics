@@ -10,7 +10,7 @@ if (!guard) return Astro.redirect("/admin/login", 302);
 const [{ data: subjects }, { data: teachers }, { data: links }] = await Promise.all([
   guard.service.from("subjects").select("id,name").order("name"),
   guard.service.from("teachers").select("id,full_name").order("full_name"),
-  guard.service.from("subject_meet_links").select("id,url,label,subject_id,created_at,subjects(id,name),teachers(id,full_name)").order("created_at", { ascending: false }),
+  guard.service.from("subject_meet_links").select("id,url,label,subject_id,teacher_id,created_at,subjects(id,name),teachers(id,full_name)").order("created_at", { ascending: false }),
 ]);
 
 const subjectName = (l: { subjects: unknown }) => {
@@ -67,25 +67,33 @@ const detail = params.get("detail");
   <div class="rounded-xl border border-border overflow-hidden">
     <table class="w-full text-sm">
       <thead class="bg-muted">
-        <tr><th class="text-left px-4 py-2">Asignatura</th><th class="text-left px-4 py-2">Docente</th><th class="text-left px-4 py-2">URL</th><th class="text-left px-4 py-2">Etiqueta</th><th class="px-4 py-2"></th></tr>
+        <tr><th class="text-left px-4 py-2" colspan="4">Enlace · asignatura, docente, URL y etiqueta (editable)</th><th class="px-4 py-2"></th></tr>
       </thead>
       <tbody>
         {(links ?? []).map((l) => (
           <tr class="border-t border-border">
-            <td class="px-4 py-2 font-medium">{subjectName(l)}</td>
-            <td class="px-4 py-2 text-muted-foreground">{teacherName(l)}</td>
-            <td class="px-4 py-2 text-muted-foreground">
-              <span class="flex items-center gap-2 min-w-0">
-                <a href={l.url} target="_blank" rel="noopener" class="text-primary hover:underline break-all">{l.url}</a>
-                <button
-                  type="button"
-                  data-copy={l.url}
-                  class="no-print shrink-0 rounded-lg border border-border px-2 py-1 text-xs hover:bg-muted"
-                  onclick="navigator.clipboard?.writeText(this.dataset.copy).then(()=>{this.textContent='¡Copiado!';setTimeout(()=>this.textContent='Copiar',1500);}).catch(()=>{this.textContent='Error';})"
-                >Copiar</button>
-              </span>
+            <td class="px-4 py-2" colspan="4">
+              <form method="POST" action="/api/admin/enlaces-meet" class="flex flex-wrap gap-2 items-center">
+                <input type="hidden" name="action" value="update" />
+                <input type="hidden" name="id" value={l.id} />
+                <select name="subject_id" required aria-label="Asignatura"
+                  class="rounded border border-input bg-background px-2 py-1 text-sm">
+                  {(subjects ?? []).map((s) => (<option value={s.id} selected={s.id === l.subject_id}>{s.name}</option>))}
+                </select>
+                <select name="teacher_id" aria-label="Docente"
+                  class="rounded border border-input bg-background px-2 py-1 text-sm">
+                  <option value="" selected={!l.teacher_id}>Sin docente</option>
+                  {(teachers ?? []).map((t) => (<option value={t.id} selected={t.id === l.teacher_id}>{t.full_name}</option>))}
+                </select>
+                <input name="url" type="url" value={l.url} required pattern="https://meet\\.google\\.com/.*"
+                  aria-label="URL de Meet"
+                  class="rounded border border-input bg-background px-2 py-1 text-sm w-64" />
+                <input name="label" value={l.label ?? ""} maxlength="100" placeholder="Etiqueta"
+                  aria-label="Etiqueta"
+                  class="rounded border border-input bg-background px-2 py-1 text-sm w-28" />
+                <button type="submit" class="text-sm text-primary hover:underline">Guardar</button>
+              </form>
             </td>
-            <td class="px-4 py-2 text-muted-foreground">{l.label ?? "—"}</td>
             <td class="px-4 py-2 text-right">
               <form method="POST" action="/api/admin/enlaces-meet" class="inline">
                 <input type="hidden" name="action" value="delete" />
