@@ -14,6 +14,7 @@ const fCurso = params.get("curso") ?? "";
 const fAsignatura = params.get("asignatura") ?? "";
 const fDia = params.get("dia") ?? "";
 const fClase = params.get("clase") ?? "";
+const fIp = (params.get("ip") ?? "").trim();
 const vista = params.get("vista") === "agrupada" ? "agrupada" : "tabla";
 const page = Math.max(0, Number(params.get("page") ?? "0") || 0);
 const LIMIT = 200;
@@ -36,6 +37,7 @@ if (vista === "agrupada") {
   if (fCurso) query = query.eq("resolved_course_id", fCurso);
   if (fAsignatura) query = query.eq("resolved_subject_id", fAsignatura);
   if (fClase) query = query.eq("resolved_schedule_id", fClase);
+  if (fIp) query = query.ilike("ip", `%${escapeLike(fIp)}%`);
   if (fDia) {
     const { desde, hasta } = rangoDiaBogota(fDia);
     query = query.gte("occurred_at", desde).lt("occurred_at", hasta);
@@ -52,6 +54,7 @@ if (vista === "agrupada") {
   if (fCurso) query = query.eq("resolved_course_id", fCurso);
   if (fAsignatura) query = query.eq("resolved_subject_id", fAsignatura);
   if (fClase) query = query.eq("resolved_schedule_id", fClase);
+  if (fIp) query = query.ilike("ip", `%${escapeLike(fIp)}%`);
   if (fDia) {
     const { desde, hasta } = rangoDiaBogota(fDia);
     query = query.gte("occurred_at", desde).lt("occurred_at", hasta);
@@ -63,6 +66,11 @@ if (vista === "agrupada") {
 
 function firstOf(v: unknown) {
   return Array.isArray(v) ? v[0] : (v as any);
+}
+
+/** Escape for SQL LIKE patterns so the IP search is literal. */
+function escapeLike(s: string): string {
+  return s.replace(/\\/g, "\\\\").replace(/%/g, "\\%").replace(/_/g, "\\_");
 }
 
 function schedLabel(id: unknown) {
@@ -87,6 +95,7 @@ function qs(pageNum: number) {
   if (fAsignatura) p.set("asignatura", fAsignatura);
   if (fDia) p.set("dia", fDia);
   if (fClase) p.set("clase", fClase);
+  if (fIp) p.set("ip", fIp);
   p.set("page", String(pageNum));
   return `?${p.toString()}`;
 }
@@ -97,8 +106,21 @@ function qsVista(v: string) {
   if (fAsignatura) p.set("asignatura", fAsignatura);
   if (fDia) p.set("dia", fDia);
   if (fClase) p.set("clase", fClase);
+  if (fIp) p.set("ip", fIp);
   if (v === "agrupada") p.set("vista", "agrupada");
   return `?${p.toString()}`;
+}
+
+/** Same filters but without the IP search. */
+function qsSinIp() {
+  const p = new URLSearchParams();
+  if (fCurso) p.set("curso", fCurso);
+  if (fAsignatura) p.set("asignatura", fAsignatura);
+  if (fDia) p.set("dia", fDia);
+  if (fClase) p.set("clase", fClase);
+  if (vista === "agrupada") p.set("vista", "agrupada");
+  const s = p.toString();
+  return s ? `?${s}` : "/admin/telemetria";
 }
 
 const total = count ?? 0;
@@ -166,8 +188,23 @@ function estudiantesDeGrupo(g: GrupoTel) {
 <AdminLayout title="Telemetría · Admin Mattics" active="telemetria">
   <h1 class="text-3xl font-bold mb-6">Telemetría de visitas</h1>
 
-  <form method="GET" class="rounded-xl border border-border bg-card p-5 mb-6 grid gap-3 sm:grid-cols-[1fr_1fr_1fr_1fr_auto] sm:items-end">
+  <form method="GET" class="rounded-xl border border-border bg-card p-5 mb-6">
     {vista === "agrupada" && (<input type="hidden" name="vista" value="agrupada" />)}
+    <div class="flex flex-col sm:flex-row gap-2 sm:items-end mb-4">
+      <div class="flex-1">
+        <label class="text-sm font-medium block mb-1" for="ip">Buscar por IP</label>
+        <input id="ip" name="ip" type="search" value={fIp} placeholder="Ej. 190.0.123.45"
+          class="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm font-mono" />
+      </div>
+      <button type="submit" class="rounded-lg bg-primary text-primary-foreground px-4 py-2 text-sm font-medium shrink-0">Buscar IP</button>
+    </div>
+    {fIp && (
+      <p class="text-sm mb-4">
+        Mostrando visitas desde la IP <code class="font-mono bg-muted px-1.5 py-0.5 rounded">{fIp}</code>
+        {" "}(<a href={qsSinIp()} class="text-primary hover:underline">quitar filtro</a>)
+      </p>
+    )}
+  <div class="grid gap-3 sm:grid-cols-[1fr_1fr_1fr_1fr_auto] sm:items-end">
     <div>
       <label class="text-sm font-medium block mb-1" for="curso">Curso</label>
       <select id="curso" name="curso" class="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm">
@@ -199,6 +236,7 @@ function estudiantesDeGrupo(g: GrupoTel) {
       <button type="submit" class="rounded-lg bg-primary text-primary-foreground px-4 py-2 text-sm font-medium">Filtrar</button>
       <a href={vista === "agrupada" ? `/admin/telemetria?vista=agrupada` : "/admin/telemetria"} class="rounded-lg border border-border px-4 py-2 text-sm">Limpiar</a>
     </div>
+  </div>
   </form>
 
   <div class="print:hidden flex flex-wrap gap-2 mb-6" role="tablist" aria-label="Vista">
