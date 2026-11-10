@@ -34,9 +34,9 @@ export function Capitulo2Caja({ onDone }: StepProps) {
             <SortBoard
                 items={movements}
                 zones={ZONES}
-                onSolved={() => {
+                onSolved={(attempts) => {
                     setSolved(true)
-                    onDone()
+                    onDone({ attempts })
                 }}
             />
 

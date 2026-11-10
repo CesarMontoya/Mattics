@@ -53,7 +53,7 @@ export function Prologo({ onDone }: StepProps) {
                             type="button"
                             onClick={() => {
                                 setChosen(candidate.id)
-                                onDone()
+                                onDone({ answers: { eleccion: candidate.id } })
                             }}
                             className={cn(
                                 "flex items-center gap-3 rounded-2xl border-2 px-4 py-3 text-left transition-all",

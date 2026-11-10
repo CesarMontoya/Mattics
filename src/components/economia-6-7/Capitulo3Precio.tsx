@@ -31,7 +31,7 @@ export function Capitulo3Precio({ onDone }: StepProps) {
                 tone: "success",
                 text: `Exacto. Cada vaso deja ${cop(perGlass)} y vendes ${JUICE_STAND.glassesPerDay}: la ganancia del día es ${cop(dailyProfit)}. Ganancia es lo que queda después de pagar el costo.`,
             })
-            onDone()
+            onDone({ answers: { precio: price, ganancia: dailyProfit } })
             return
         }
         if (dailyProfit < 0) {

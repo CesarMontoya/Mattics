@@ -11,11 +11,14 @@ export type MuralPiece = "letrero" | "toldo" | "vitrina" | "puerta" | "nevera" |
 
 export interface StepResult {
     attempts?: number
-    note?: string
+    /** Respuestas propias del capítulo, para el panel del docente. */
+    answers?: Record<string, string | number>
 }
 
 export interface StepProps {
     onDone: (result?: StepResult) => void
+    /** Nombres de la entrega (titular y grupo), para la postal impresa. */
+    studentNames?: string[]
 }
 
 export interface SavedProgress {

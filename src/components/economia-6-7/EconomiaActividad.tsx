@@ -80,11 +80,12 @@ const STORAGE_KEY = "economia-6-7:tienda-progreso"
 interface SavedState {
     completed: StepId[]
     maxVisited: number
+    results: Partial<Record<StepId, StepResult>>
 }
 
-function readSaved(): SavedState | null {
+function readSaved(key: string): SavedState | null {
     try {
-        const raw = window.localStorage.getItem(STORAGE_KEY)
+        const raw = window.localStorage.getItem(key)
         if (!raw) return null
         const parsed = JSON.parse(raw) as Partial<SavedState>
         if (!Array.isArray(parsed.completed)) return null
@@ -97,20 +98,48 @@ function readSaved(): SavedState | null {
         return {
             completed: restored,
             maxVisited: typeof parsed.maxVisited === "number" ? parsed.maxVisited : 0,
+            results: (parsed.results as SavedState["results"]) ?? {},
         }
     } catch {
         return null
     }
 }
 
-export default function EconomiaActividad() {
+interface EconomiaActividadProps {
+    /** Nombres de la entrega: titular y grupo. */
+    studentNames?: string[]
+    /** Se llama en cada cambio de avance para guardarlo en la clase. */
+    onProgress?: (payload: {
+        progress: Record<string, unknown>
+        answers: Record<string, unknown>
+        completed: StepId[]
+        done: boolean
+    }) => void
+    /** Salir de la entrega actual y volver al formulario de entrada. */
+    onExit?: () => void
+    /** Sin el menú del sitio: la actividad se abre desde un enlace de clase. */
+    standalone?: boolean
+    /** Aísla el progreso local por entrega, para que dos estudiantes no se mezclen. */
+    storageId?: string
+}
+
+export default function EconomiaActividad({
+    studentNames = [],
+    onProgress,
+    onExit,
+    standalone = false,
+    storageId,
+}: EconomiaActividadProps) {
     const [current, setCurrent] = React.useState(0)
     const [completed, setCompleted] = React.useState<StepId[]>([])
+    const [results, setResults] = React.useState<Partial<Record<StepId, StepResult>>>({})
     const [maxVisited, setMaxVisited] = React.useState(0)
     const [hydrated, setHydrated] = React.useState(false)
 
+    const storageKey = storageId ? `${STORAGE_KEY}:${storageId}` : STORAGE_KEY
+
     React.useEffect(() => {
-        const saved = readSaved()
+        const saved = readSaved(storageKey)
         const param = Number(new URLSearchParams(window.location.search).get("paso"))
         const fromUrl = Number.isFinite(param) && param >= 1 && param <= STEPS.length ? param - 1 : null
 
@@ -121,13 +150,23 @@ export default function EconomiaActividad() {
         const start = fromUrl ?? Math.min(saved?.maxVisited ?? 0, STEPS.length - 1)
         setCurrent(start)
         setMaxVisited((value) => Math.max(value, saved?.maxVisited ?? 0, start))
+        if (saved?.results) setResults(saved.results)
         setHydrated(true)
-    }, [])
+    }, [storageKey])
 
     React.useEffect(() => {
         if (!hydrated) return
-        window.localStorage.setItem(STORAGE_KEY, JSON.stringify({ completed, maxVisited }))
-    }, [completed, maxVisited, hydrated])
+        window.localStorage.setItem(storageKey, JSON.stringify({ completed, maxVisited, results }))
+    }, [completed, maxVisited, results, hydrated, storageKey])
+
+    React.useEffect(() => {
+        if (!hydrated || !onProgress) return
+        const progress = Object.fromEntries(
+            completed.map((id) => [id, { attempts: results[id]?.attempts ?? 0 }]),
+        )
+        const answers = Object.fromEntries(completed.map((id) => [id, results[id]?.answers ?? {}]))
+        onProgress({ progress, answers, completed, done: completed.length === STEPS.length })
+    }, [completed, results, hydrated, onProgress])
 
     React.useEffect(() => {
         if (!hydrated) return
@@ -141,10 +180,11 @@ export default function EconomiaActividad() {
     const isLast = current === STEPS.length - 1
 
     const markDone = React.useCallback(
-        (_result?: StepResult) => {
+        (result?: StepResult) => {
             setCompleted((currentCompleted) =>
                 currentCompleted.includes(step.id) ? currentCompleted : [...currentCompleted, step.id],
             )
+            if (result) setResults((current) => ({ ...current, [step.id]: result }))
         },
         [step.id],
     )
@@ -166,7 +206,7 @@ export default function EconomiaActividad() {
     const restart = () => {
         const confirmed = window.confirm("¿Borrar el progreso y empezar de nuevo?")
         if (!confirmed) return
-        window.localStorage.removeItem(STORAGE_KEY)
+        window.localStorage.removeItem(storageKey)
         setCompleted([])
         setMaxVisited(0)
         setCurrent(0)
@@ -174,8 +214,7 @@ export default function EconomiaActividad() {
 
     const StepBody = step.Component
 
-    return (
-        <SidebarLayout breadcrumbs={[{ label: "Económica 6-7", href: "#" }, { label: "La tienda de la abuela" }]}>
+    const content = (
             <main className="flex-1 bg-gradient-to-b from-amber-50/60 via-white to-rose-50/40 pb-16 dark:from-zinc-950 dark:via-zinc-950 dark:to-zinc-900">
                 <div className="mx-auto w-full max-w-4xl px-4 pt-6 sm:px-6">
                     <header className="mb-5 flex flex-wrap items-center justify-between gap-3">
@@ -190,6 +229,11 @@ export default function EconomiaActividad() {
                                 <h1 className="text-lg font-bold tracking-tight text-slate-900 dark:text-zinc-50 sm:text-xl">
                                     La tienda de la abuela
                                 </h1>
+                                {studentNames.length > 0 && (
+                                    <p className="text-[11px] font-semibold text-slate-500 dark:text-zinc-400">
+                                        {studentNames.join(" · ")}
+                                    </p>
+                                )}
                             </div>
                         </div>
 
@@ -204,6 +248,15 @@ export default function EconomiaActividad() {
                                 <p className="text-sm font-bold text-slate-700 dark:text-zinc-200">
                                     {completed.length} de {STEPS.length} listos
                                 </p>
+                                {onExit && (
+                                    <button
+                                        type="button"
+                                        onClick={onExit}
+                                        className="text-[11px] font-semibold text-slate-400 underline underline-offset-2 hover:text-rose-600"
+                                    >
+                                        Cambiar de estudiante
+                                    </button>
+                                )}
                             </div>
                         </div>
                     </header>
@@ -301,7 +354,7 @@ export default function EconomiaActividad() {
                                 </>
                             }
                         >
-                            <StepBody onDone={markDone} />
+                            <StepBody onDone={markDone} studentNames={studentNames} />
                         </SliceShell>
                     </div>
 
@@ -310,6 +363,14 @@ export default function EconomiaActividad() {
                     </p>
                 </div>
             </main>
+    )
+
+    // En una clase (/e/CODIGO) el estudiante no necesita el menú del sitio.
+    if (standalone) return content
+
+    return (
+        <SidebarLayout breadcrumbs={[{ label: "Económica 6-7", href: "#" }, { label: "La tienda de la abuela" }]}>
+            {content}
         </SidebarLayout>
     )
 }

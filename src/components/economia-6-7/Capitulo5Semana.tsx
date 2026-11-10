@@ -33,6 +33,7 @@ export function Capitulo5Semana({ onDone }: StepProps) {
 
     const outcomes = order.map((index) => WEEK_OUTCOMES[index])
     const rows = WEEK_DAYS.map((day, index) => ({ day, outcome: outcomes[index] }))
+    const weekTotal = outcomes.reduce((sum, outcome) => sum + outcome.amount * outcome.sign, 0)
     const allSigned = rows.every((row) => signed[row.day.id])
 
     const apply = (dayId: string) => {
@@ -63,7 +64,7 @@ export function Capitulo5Semana({ onDone }: StepProps) {
         if (option.correct) {
             setSolved(true)
             setMessage({ tone: "success", text: option.feedback })
-            onDone()
+            onDone({ answers: { resultado: weekTotal >= 0 ? "ganancia" : "pérdida", monto: Math.abs(weekTotal) } })
             return
         }
         setMessage({ tone: "error", text: option.feedback })

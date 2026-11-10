@@ -35,7 +35,7 @@ const PRINT_STYLES = `
 }
 `
 
-export function CierrePostal({ onDone }: StepProps) {
+export function CierrePostal({ onDone, studentNames = [] }: StepProps) {
     const [piece, setPiece] = React.useState<MuralPiece>("toldo")
     const [colors, setColors] = React.useState<Partial<Record<MuralPiece, string>>>({
         toldo: "#b91c1c",
@@ -49,12 +49,10 @@ export function CierrePostal({ onDone }: StepProps) {
     const goal = PERSONAL_GOALS.find((candidate) => candidate.id === goalId) ?? PERSONAL_GOALS[0]
     const weekly = Math.round(goal.price / weeks / 1000) * 1000
 
-    const reportedRef = React.useRef(false)
+    // El plan se reporta al panel del docente y se actualiza si el estudiante lo cambia.
     React.useEffect(() => {
-        if (reportedRef.current) return
-        reportedRef.current = true
-        onDone()
-    }, [onDone])
+        onDone({ answers: { meta: goalId, semanas: weeks, cuota: weekly } })
+    }, [goalId, weeks, weekly, onDone])
 
     return (
         <div className="space-y-5">
@@ -115,9 +113,7 @@ export function CierrePostal({ onDone }: StepProps) {
                             Postal de la tienda
                         </p>
                         <p className="mt-1 text-xl font-bold text-slate-900 dark:text-zinc-50">El Buen Sabor</p>
-                        <p className="text-xs font-medium text-slate-500 dark:text-zinc-400">
-                            Cinco días a cargo de la caja
-                        </p>
+        
                     </div>
                     <Mural completed={["prologo", "dinero", "caja", "precio", "consejos", "semana"]} colors={colors} size={150} />
                 </div>

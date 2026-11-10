@@ -19,7 +19,7 @@ export function Capitulo1Dinero({ onDone }: StepProps) {
                 antiguo al más reciente.
             </p>
 
-            <OrderRail items={MONEY_TIMELINE} onSolved={() => onDone()} />
+            <OrderRail items={MONEY_TIMELINE} onSolved={(attempts) => onDone({ attempts })} />
         </div>
     )
 }
