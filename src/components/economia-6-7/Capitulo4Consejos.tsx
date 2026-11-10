@@ -4,6 +4,7 @@ import * as React from "react"
 import { GrandmaSays } from "./kit/SliceShell"
 import { SortBoard } from "./kit/SortBoard"
 import { HABIT_CARDS } from "./content"
+import { seededShuffle } from "./kit/shuffle"
 import type { StepProps } from "./kit/types"
 
 const ZONES = [
@@ -13,6 +14,9 @@ const ZONES = [
 
 export function Capitulo4Consejos({ onDone }: StepProps) {
     const [solved, setSolved] = React.useState(false)
+    // Orden mezclado y estable: evita que la columna izquierda sea siempre "bueno"
+    // y la derecha "malo", que permite resolver sin leer.
+    const cards = React.useMemo(() => seededShuffle(HABIT_CARDS, 17), [])
 
     return (
         <div className="space-y-5">
@@ -27,7 +31,7 @@ export function Capitulo4Consejos({ onDone }: StepProps) {
             </p>
 
             <SortBoard
-                items={HABIT_CARDS}
+                items={cards}
                 zones={ZONES}
                 onSolved={() => {
                     setSolved(true)

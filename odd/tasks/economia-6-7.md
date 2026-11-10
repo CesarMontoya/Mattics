@@ -70,6 +70,9 @@ histórica se afirma como dato sin revisión previa.
 - Commits: `c135b0c` (kit), `4836aab` (capítulos y página), `c5bbd71` (e2e).
 - Verificación observada: `bun run build` completa sin errores; los 3 casos de
   `e2e/economia-6-7.spec.ts` pasan en Chromium.
+- Corrección: las tarjetas de los capítulos 2 y 4 se mezclan con semilla fija.
+  Sin mezcla, cada columna de la cuadrícula caía siempre en el mismo tipo y el
+  ejercicio se resolvía por posición en lugar de por contenido.
 
 ## Siguiente paso
 

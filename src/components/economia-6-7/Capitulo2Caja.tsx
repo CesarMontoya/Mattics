@@ -4,6 +4,7 @@ import * as React from "react"
 import { GrandmaSays } from "./kit/SliceShell"
 import { SortBoard } from "./kit/SortBoard"
 import { DAY_MOVEMENTS, DAY_TOTALS } from "./content"
+import { seededShuffle } from "./kit/shuffle"
 import { cop } from "./kit/types"
 import type { StepProps } from "./kit/types"
 
@@ -14,6 +15,9 @@ const ZONES = [
 
 export function Capitulo2Caja({ onDone }: StepProps) {
     const [solved, setSolved] = React.useState(false)
+    // Mismo motivo que en los hábitos: sin mezcla, cada columna cae siempre
+    // en el mismo tipo y el ejercicio se resuelve por posición.
+    const movements = React.useMemo(() => seededShuffle(DAY_MOVEMENTS, 5), [])
     const balance = DAY_TOTALS.income - DAY_TOTALS.expense
 
     return (
@@ -28,7 +32,7 @@ export function Capitulo2Caja({ onDone }: StepProps) {
             </p>
 
             <SortBoard
-                items={DAY_MOVEMENTS}
+                items={movements}
                 zones={ZONES}
                 onSolved={() => {
                     setSolved(true)
