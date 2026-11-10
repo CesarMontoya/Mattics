@@ -1,0 +1,131 @@
+---
+export const prerender = false;
+
+import AdminLayout from "@/layouts/AdminLayout.astro";
+import { requireAdminPage } from "@/lib/clases/guard";
+import { getSessionById, listSubmissions } from "@/lib/actividad/store";
+import { PASOS_TOTAL, contarPasos, resumenRespuestas } from "@/lib/actividad/resumen";
+import { formatFecha, formatFechaHora } from "@/lib/clases/fecha";
+
+const guard = await requireAdminPage(Astro);
+if (!guard) return Astro.redirect("/admin/login", 302);
+
+const id = Astro.params.id ?? "";
+const session = await getSessionById(id);
+if (!session) return Astro.redirect("/admin/actividades?error=no-existe", 302);
+
+const submissions = await listSubmissions(session.id);
+const completadas = submissions.filter((row) => row.completed_at).length;
+const promedio = submissions.length
+  ? Math.round(
+      (submissions.reduce((sum, row) => sum + contarPasos(row.progress), 0) / submissions.length) * 10,
+    ) / 10
+  : 0;
+
+const link = `${Astro.url.origin}/e/${session.code}`;
+const params = Astro.url.searchParams;
+const ok = params.get("ok");
+---
+
+<AdminLayout title={`${session.title} · Actividades`} active="actividades">
+  <a href="/admin/actividades" class="text-sm text-muted-foreground hover:underline">← Todas las clases</a>
+
+  <div class="mt-3 mb-6 flex flex-wrap items-start justify-between gap-4">
+    <div>
+      <h1 class="text-3xl font-bold">{session.title}</h1>
+      <p class="text-sm text-muted-foreground mt-1">
+        Creada el {formatFecha(session.created_at)} ·
+        {session.closed_at ? " cerrada" : " abierta"}
+      </p>
+    </div>
+    <div class="rounded-xl border border-border bg-card px-5 py-3 text-center">
+      <p class="text-[11px] uppercase tracking-wide text-muted-foreground">Código de la clase</p>
+      <p class="font-mono text-3xl font-bold tracking-[0.2em]">{session.code}</p>
+      <a href={link} class="text-xs text-blue-600 hover:underline break-all">{link}</a>
+    </div>
+  </div>
+
+  {ok && <p class="text-sm text-green-700 bg-green-50 border border-green-200 rounded-lg px-3 py-2 mb-4">Guardado correctamente.</p>}
+
+  <div class="grid gap-3 sm:grid-cols-3 mb-6">
+    <div class="rounded-xl border border-border bg-card p-4">
+      <p class="text-xs text-muted-foreground">Entregas</p>
+      <p class="text-2xl font-bold">{submissions.length}</p>
+    </div>
+    <div class="rounded-xl border border-border bg-card p-4">
+      <p class="text-xs text-muted-foreground">Terminaron la actividad</p>
+      <p class="text-2xl font-bold">{completadas}</p>
+    </div>
+    <div class="rounded-xl border border-border bg-card p-4">
+      <p class="text-xs text-muted-foreground">Pasos completados (promedio)</p>
+      <p class="text-2xl font-bold">{promedio} / {PASOS_TOTAL}</p>
+    </div>
+  </div>
+
+  <div class="flex flex-wrap items-center gap-3 mb-4">
+    <a href={`/api/admin/actividades/${session.id}/export`}
+      class="rounded-lg border border-border px-3 py-1.5 text-sm hover:bg-muted">Descargar Excel</a>
+    <form method="POST" action="/api/admin/actividades" class="inline">
+      <input type="hidden" name="id" value={session.id} />
+      <input type="hidden" name="action" value={session.closed_at ? "reopen" : "close"} />
+      <button type="submit" class="text-sm text-amber-700 hover:underline">
+        {session.closed_at ? "Reabrir la clase" : "Cerrar la clase"}
+      </button>
+    </form>
+    {session.closed_at && (
+      <p class="text-xs text-muted-foreground">Cerrada: el enlace ya no acepta entregas nuevas.</p>
+    )}
+  </div>
+
+  {submissions.length === 0 ? (
+    <div class="rounded-xl border border-dashed border-border p-8 text-center text-muted-foreground">
+      Todavía nadie ha entrado. Comparte el código <strong class="font-mono">{session.code}</strong> con tus estudiantes.
+    </div>
+  ) : (
+    <div class="rounded-xl border border-border overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead class="bg-muted">
+          <tr>
+            <th class="text-left px-4 py-2">Estudiantes</th>
+            <th class="text-left px-4 py-2">Pasos</th>
+            <th class="text-left px-4 py-2">Estado</th>
+            <th class="text-left px-4 py-2">Respuestas</th>
+            <th class="text-left px-4 py-2">Actualizado</th>
+          </tr>
+        </thead>
+        <tbody>
+          {submissions.map((row) => {
+            const pasos = contarPasos(row.progress);
+            const respuestas = resumenRespuestas(row.answers);
+            return (
+              <tr class="border-t border-border align-top">
+                <td class="px-4 py-3">
+                  <p class="font-medium">{row.student_name}</p>
+                  {row.group_names.length > 0 && (
+                    <p class="text-xs text-muted-foreground">Grupo: {row.group_names.join(", ")}</p>
+                  )}
+                </td>
+                <td class="px-4 py-3 whitespace-nowrap">
+                  <span class={pasos === PASOS_TOTAL ? "text-green-700 font-medium" : ""}>{pasos} / {PASOS_TOTAL}</span>
+                </td>
+                <td class="px-4 py-3 whitespace-nowrap">
+                  {row.completed_at
+                    ? <span class="text-xs rounded-full bg-green-50 text-green-700 border border-green-200 px-2 py-0.5">Terminada</span>
+                    : <span class="text-xs rounded-full bg-amber-50 text-amber-700 border border-amber-200 px-2 py-0.5">En curso</span>}
+                </td>
+                <td class="px-4 py-3">
+                  {respuestas.length === 0
+                    ? <span class="text-muted-foreground">—</span>
+                    : <ul class="space-y-0.5">{respuestas.map((line) => <li class="text-xs">{line}</li>)}</ul>}
+                </td>
+                <td class="px-4 py-3 whitespace-nowrap text-xs text-muted-foreground">
+                  {formatFechaHora(row.updated_at)}
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  )}
+</AdminLayout>
