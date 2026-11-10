@@ -199,14 +199,93 @@ export const HABIT_CARDS: HabitCard[] = [
     },
 ]
 
-/** Junta de ahorro del capítulo 5. */
-export const SAVINGS_CIRCLE = {
-    fridgePrice: 600000,
-    members: 12,
-    minFee: 20000,
-    maxFee: 80000,
-    step: 5000,
+/** Un día del cuaderno: el resultado del día puede ser ganancia (+) o pérdida (−). */
+export interface LedgerDay {
+    id: string
+    day: string
+    emoji: string
+    description: string
+    amount: number
+    sign: 1 | -1
+    feedback: string
 }
+
+export const WEEK_LEDGER: LedgerDay[] = [
+    {
+        id: "lunes",
+        day: "Lunes",
+        emoji: "🫓",
+        description: "Empezó la semana: se vendió más de lo que se gastó.",
+        amount: 12000,
+        sign: 1,
+        feedback: "Entró más de lo que salió: el día dejó ganancia, y se escribe con signo positivo.",
+    },
+    {
+        id: "martes",
+        day: "Martes",
+        emoji: "🍎",
+        description: "Se dañó una caja de fruta y hubo que reponerla: se gastó más de lo que se vendió.",
+        amount: 8000,
+        sign: -1,
+        feedback: "Salió más de lo que entró: el día cerró en pérdida. La pérdida se escribe con signo negativo.",
+    },
+    {
+        id: "miercoles",
+        day: "Miércoles",
+        emoji: "🧃",
+        description: "Las ventas volvieron a subir y superaron los gastos del día.",
+        amount: 5000,
+        sign: 1,
+        feedback: "Volvió a dejar ganancia: entra más de lo que sale, signo positivo.",
+    },
+    {
+        id: "jueves",
+        day: "Jueves",
+        emoji: "🧊",
+        description: "Se pagó el arreglo de la nevera y las ventas no alcanzaron a cubrirlo.",
+        amount: 15000,
+        sign: -1,
+        feedback: "Un gasto grande que las ventas no alcanzaron a cubrir: el día cerró en pérdida.",
+    },
+    {
+        id: "viernes",
+        day: "Viernes",
+        emoji: "🎪",
+        description: "Feria en el colegio: se vendió todo lo que había en la tienda.",
+        amount: 9000,
+        sign: 1,
+        feedback: "El mejor día de la semana: ganancia, signo positivo.",
+    },
+]
+
+export interface TotalOption {
+    id: string
+    label: string
+    feedback: string
+    correct?: boolean
+}
+
+export const WEEK_TOTAL_OPTIONS: TotalOption[] = [
+    {
+        id: "correcto",
+        label: "+$3.000",
+        correct: true,
+        feedback:
+            "La semana cerró con $3.000 de ganancia. Los días de pérdida restan: por eso el resultado es menor que el de un solo día bueno.",
+    },
+    {
+        id: "absolutos",
+        label: "+$49.000",
+        feedback:
+            "Ese es el error clásico: sumaste los cinco días como si todos fueran ganancia. Los días de pérdida restan, no suman.",
+    },
+    {
+        id: "signo",
+        label: "−$3.000",
+        feedback:
+            "El número es el correcto, pero el signo no. La semana terminó por encima de cero, así que el resultado es positivo.",
+    },
+]
 
 export interface SavingsGoal {
     id: string

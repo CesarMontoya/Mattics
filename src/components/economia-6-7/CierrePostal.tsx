@@ -119,7 +119,7 @@ export function CierrePostal({ onDone }: StepProps) {
                             Cinco días a cargo de la caja
                         </p>
                     </div>
-                    <Mural completed={["prologo", "dinero", "caja", "precio", "consejos", "junta"]} colors={colors} size={150} />
+                    <Mural completed={["prologo", "dinero", "caja", "precio", "consejos", "semana"]} colors={colors} size={150} />
                 </div>
 
                 <div className="rounded-2xl bg-white/80 px-4 py-3 ring-1 ring-amber-200/70 dark:bg-zinc-900/60 dark:ring-zinc-800">

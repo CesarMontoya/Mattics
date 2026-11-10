@@ -11,7 +11,7 @@ import { Capitulo1Dinero } from "./Capitulo1Dinero"
 import { Capitulo2Caja } from "./Capitulo2Caja"
 import { Capitulo3Precio } from "./Capitulo3Precio"
 import { Capitulo4Consejos } from "./Capitulo4Consejos"
-import { Capitulo5Junta } from "./Capitulo5Junta"
+import { Capitulo5Semana } from "./Capitulo5Semana"
 import { CierrePostal } from "./CierrePostal"
 import type { StepId, StepProps, StepResult } from "./kit/types"
 
@@ -60,11 +60,11 @@ const STEPS: StepDefinition[] = [
         Component: Capitulo4Consejos,
     },
     {
-        id: "junta",
+        id: "semana",
         eyebrow: "Día 5 · Capítulo 5",
-        title: "La junta",
-        goal: "Calcula la cuota semanal para comprar la nevera entre todos.",
-        Component: Capitulo5Junta,
+        title: "La semana en el cuaderno",
+        goal: "Cada día cerró en ganancia o en pérdida. Averigua cómo cerró la semana.",
+        Component: Capitulo5Semana,
     },
     {
         id: "postal",
@@ -88,8 +88,14 @@ function readSaved(): SavedState | null {
         if (!raw) return null
         const parsed = JSON.parse(raw) as Partial<SavedState>
         if (!Array.isArray(parsed.completed)) return null
+        // "junta" fue el nombre anterior del quinto capítulo.
+        const legacyIds: Record<string, StepId> = { junta: "semana" }
+        const restored = (parsed.completed as string[])
+            .map((id) => legacyIds[id] ?? id)
+            .filter((id): id is StepId => STEPS.some((step) => step.id === id))
+
         return {
-            completed: parsed.completed.filter((id): id is StepId => STEPS.some((step) => step.id === id)),
+            completed: restored,
             maxVisited: typeof parsed.maxVisited === "number" ? parsed.maxVisited : 0,
         }
     } catch {

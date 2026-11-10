@@ -4,7 +4,7 @@ export type StepId =
     | "caja"
     | "precio"
     | "consejos"
-    | "junta"
+    | "semana"
     | "postal"
 
 export type MuralPiece = "letrero" | "toldo" | "vitrina" | "puerta" | "nevera" | "maceta"
@@ -29,7 +29,7 @@ export const MONEY_STEP_PIECES: Record<StepId, MuralPiece | null> = {
     caja: "toldo",
     precio: "vitrina",
     consejos: "puerta",
-    junta: "nevera",
+    semana: "nevera",
     postal: null,
 }
 

@@ -46,7 +46,7 @@ histórica se afirma como dato sin revisión previa.
 - [x] T3. Capítulo 2 (ingresos y gastos) con `SortBoard`; revela el saldo del día.
 - [x] T4. Capítulo 3 (precio, ganancia y pérdida) con control deslizante y barra que cruza cero.
 - [x] T5. Capítulo 4 (hábitos buenos y malos) con `SortBoard`, ocho tarjetas.
-- [x] T6. Capítulo 5 (la junta de ahorro) con cuota semanal y pozo colectivo.
+- [x] T6. Capítulo 5 (la semana en el cuaderno): resultado diario con signo y suma de enteros.
 - [x] T7. Cierre: postal coloreable, plan de ahorro propio e impresión.
 - [x] T8. Navegación, spec de Playwright y verificación final (`bun run build` + spec).
 
@@ -70,6 +70,11 @@ histórica se afirma como dato sin revisión previa.
 - Commits: `c135b0c` (kit), `4836aab` (capítulos y página), `c5bbd71` (e2e).
 - Verificación observada: `bun run build` completa sin errores; los 3 casos de
   `e2e/economia-6-7.spec.ts` pasan en Chromium.
+- Reestructuración del capítulo 5 (antes "la junta"): el mecanismo de ahorro
+  colectivo con "pozo" confundía y el control deslizante mostraba la respuesta al
+  llenar los bloques. Se reemplazó por el cuaderno de la semana: cada día lleva
+  signo (+ ganancia, − pérdida) y el estudiante suma enteros para hallar el
+  cierre semanal.
 - Corrección: las tarjetas de los capítulos 2 y 4 se mezclan con semilla fija.
   Sin mezcla, cada columna de la cuadrícula caía siempre en el mismo tipo y el
   ejercicio se resolvía por posición en lugar de por contenido.

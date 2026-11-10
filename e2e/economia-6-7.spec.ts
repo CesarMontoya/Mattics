@@ -83,10 +83,23 @@ test("la actividad se completa de punta a punta", async ({ page }) => {
     await expect(page.getByText(/Ninguno de estos hábitos/)).toBeVisible()
     await page.getByRole("button", { name: "Continuar" }).click()
 
-    // Capítulo 5: la junta
-    await setRange(page, "#cuota-junta", 50000)
-    await page.getByRole("button", { name: "Proponer la cuota" }).click()
-    await expect(page.getByText(/La cuenta:/)).toBeVisible()
+    // Capítulo 5: la semana en el cuaderno (enteros con signo)
+    const ledger: [string, string][] = [
+        ["day-lunes", "sign-positive"],
+        ["day-martes", "sign-negative"],
+        ["day-miercoles", "sign-positive"],
+        ["day-jueves", "sign-negative"],
+        ["day-viernes", "sign-positive"],
+    ]
+    for (const [dayId, signId] of ledger) {
+        await page.getByTestId(signId).click()
+        await page.getByTestId(dayId).click()
+    }
+    await expect(page.getByText("El cuaderno está completo")).toBeVisible()
+    await page.getByTestId("total-absolutos").click()
+    await expect(page.getByText(/error clásico/)).toBeVisible()
+    await page.getByTestId("total-correcto").click()
+    await expect(page.getByText("El camino de la semana")).toBeVisible()
     await page.getByRole("button", { name: "Continuar" }).click()
 
     // Cierre: postal y plan
