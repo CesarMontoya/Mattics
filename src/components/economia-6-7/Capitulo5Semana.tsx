@@ -68,8 +68,8 @@ export function Capitulo5Semana({ onDone }: StepProps) {
             <style>{`@keyframes semana-shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-6px)}40%{transform:translateX(6px)}60%{transform:translateX(-4px)}80%{transform:translateX(4px)}}`}</style>
 
             <GrandmaSays>
-                El cuaderno no lleva discusiones: un número por día. Si el día dejó, va con más. Si el día se
-                perdió, va con menos. Y al final de la semana se suman todos.
+                El cuaderno no lleva discusiones: un número por día. Si el día dejó ganancia, va con más. Si el
+                día dejó pérdida, va con menos. Y al final de la semana se suman todos.
             </GrandmaSays>
 
             <p className="text-sm leading-relaxed text-slate-600 dark:text-zinc-300">
@@ -185,10 +185,11 @@ export function Capitulo5Semana({ onDone }: StepProps) {
             {allSigned && (
                 <div className="animate-in fade-in slide-in-from-bottom-3 space-y-3 rounded-3xl border-2 border-slate-200 bg-slate-50/80 p-5 dark:border-zinc-800 dark:bg-zinc-900/60">
                     <p className="text-sm font-bold text-slate-800 dark:text-zinc-100">
-                        El cuaderno está completo. ¿Cómo cerró la semana?
+                        El cuaderno está completo. Suma los cinco días y di cómo cerró la semana.
                     </p>
                     <p className="text-xs leading-relaxed text-slate-500 dark:text-zinc-400">
-                        Los cinco días, en orden: {WEEK_LEDGER.map((day) => `${day.sign === 1 ? "+" : "−"}${cop(day.amount)}`).join("  ")}
+                        ¿Hubo ganancia o pérdida? ¿De cuánto? Los días, en orden:{" "}
+                        {WEEK_LEDGER.map((day) => `${day.sign === 1 ? "+" : "−"}${cop(day.amount)}`).join("  ")}
                     </p>
                     <div className="grid gap-2 sm:grid-cols-3">
                         {WEEK_TOTAL_OPTIONS.map((option) => (
@@ -199,7 +200,7 @@ export function Capitulo5Semana({ onDone }: StepProps) {
                                 disabled={solved}
                                 data-testid={`total-${option.id}`}
                                 className={cn(
-                                    "rounded-2xl border-2 px-3 py-3 text-center text-lg font-bold tabular-nums transition-all",
+                                    "rounded-2xl border-2 px-3 py-3 text-center text-sm font-bold transition-all",
                                     solved && option.correct
                                         ? "border-emerald-400 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-300"
                                         : chosenTotal === option.id

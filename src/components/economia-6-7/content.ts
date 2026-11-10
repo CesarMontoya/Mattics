@@ -268,22 +268,22 @@ export interface TotalOption {
 export const WEEK_TOTAL_OPTIONS: TotalOption[] = [
     {
         id: "correcto",
-        label: "+$3.000",
+        label: "Ganancia de $3.000",
         correct: true,
         feedback:
-            "La semana cerró con $3.000 de ganancia. Los días de pérdida restan: por eso el resultado es menor que el de un solo día bueno.",
+            "Correcto: +$12.000 − $8.000 + $5.000 − $15.000 + $9.000 = +$3.000. Hubo ganancia de $3.000.",
     },
     {
         id: "absolutos",
-        label: "+$49.000",
+        label: "Ganancia de $49.000",
         feedback:
             "Ese es el error clásico: sumaste los cinco días como si todos fueran ganancia. Los días de pérdida restan, no suman.",
     },
     {
         id: "signo",
-        label: "−$3.000",
+        label: "Pérdida de $3.000",
         feedback:
-            "El número es el correcto, pero el signo no. La semana terminó por encima de cero, así que el resultado es positivo.",
+            "El número es el correcto, pero el signo no. La semana terminó por encima de cero: hubo ganancia de $3.000, no pérdida.",
     },
 ]
 

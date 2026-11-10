@@ -63,7 +63,7 @@ const STEPS: StepDefinition[] = [
         id: "semana",
         eyebrow: "Día 5 · Capítulo 5",
         title: "La semana en el cuaderno",
-        goal: "Cada día cerró en ganancia o en pérdida. Averigua cómo cerró la semana.",
+        goal: "Suma los cinco días y averigua si la semana cerró en ganancia o en pérdida, y de cuánto.",
         Component: Capitulo5Semana,
     },
     {
