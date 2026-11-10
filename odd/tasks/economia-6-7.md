@@ -39,16 +39,16 @@ histórica se afirma como dato sin revisión previa.
 
 ## Tareas
 
-- [ ] T1. Capa de progreso y shell: `EconomiaActividad.tsx`, `SliceShell`, `Mural`, persistencia en
+- [x] T1. Capa de progreso y shell: `EconomiaActividad.tsx`, `SliceShell`, `Mural`, persistencia en
       `localStorage`, deep link `?paso=N`. Verificación: build de Astro sin errores y navegación
       entre pasos en navegador.
-- [ ] T2. Capítulo 1 (línea de tiempo del dinero) con `OrderRail`; validación al revisar.
-- [ ] T3. Capítulo 2 (ingresos y gastos) con `SortBoard`; revela el saldo del día.
-- [ ] T4. Capítulo 3 (precio, ganancia y pérdida) con control deslizante y barra que cruza cero.
-- [ ] T5. Capítulo 4 (hábitos buenos y malos) con `SortBoard`, ocho tarjetas.
-- [ ] T6. Capítulo 5 (la junta de ahorro) con cuota semanal y pozo colectivo.
-- [ ] T7. Cierre: postal coloreable, plan de ahorro propio e impresión.
-- [ ] T8. Navegación, spec de Playwright y verificación final (`bun run build` + spec).
+- [x] T2. Capítulo 1 (línea de tiempo del dinero) con `OrderRail`; validación al revisar.
+- [x] T3. Capítulo 2 (ingresos y gastos) con `SortBoard`; revela el saldo del día.
+- [x] T4. Capítulo 3 (precio, ganancia y pérdida) con control deslizante y barra que cruza cero.
+- [x] T5. Capítulo 4 (hábitos buenos y malos) con `SortBoard`, ocho tarjetas.
+- [x] T6. Capítulo 5 (la junta de ahorro) con cuota semanal y pozo colectivo.
+- [x] T7. Cierre: postal coloreable, plan de ahorro propio e impresión.
+- [x] T8. Navegación, spec de Playwright y verificación final (`bun run build` + spec).
 
 ## Criterios de aceptación
 
@@ -63,3 +63,16 @@ histórica se afirma como dato sin revisión previa.
 
 - `bun run build`
 - `bunx playwright test e2e/economia-6-7.spec.ts --project=chromium`
+
+## Progreso
+
+- T1-T8 completadas en la rama `feat/tienda-abuela-economia-6-7`.
+- Commits: `c135b0c` (kit), `4836aab` (capítulos y página), `c5bbd71` (e2e).
+- Verificación observada: `bun run build` completa sin errores; los 3 casos de
+  `e2e/economia-6-7.spec.ts` pasan en Chromium.
+
+## Siguiente paso
+
+- Revisión pedagógica del guion con el docente: nombre y origen de la abuela,
+  cifras de la tienda y pertinencia local de la junta de ahorro.
+- Validar en un grado real la duración de cada capítulo antes de publicar.
