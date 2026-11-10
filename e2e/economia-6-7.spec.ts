@@ -83,17 +83,18 @@ test("la actividad se completa de punta a punta", async ({ page }) => {
     await expect(page.getByText(/Ninguno de estos hábitos/)).toBeVisible()
     await page.getByRole("button", { name: "Continuar" }).click()
 
-    // Capítulo 5: la semana en el cuaderno (enteros con signo)
-    const ledger: [string, string][] = [
-        ["day-lunes", "sign-positive"],
-        ["day-martes", "sign-negative"],
-        ["day-miercoles", "sign-positive"],
-        ["day-jueves", "sign-negative"],
-        ["day-viernes", "sign-positive"],
-    ]
-    for (const [dayId, signId] of ledger) {
-        await page.getByTestId(signId).click()
-        await page.getByTestId(dayId).click()
+    // Capítulo 5: la semana en el cuaderno (enteros con signo).
+    // El reparto de resultados es aleatorio, así que se prueba un signo y, si no
+    // queda fijado, el otro. Así la prueba no depende del orden que salga.
+    for (const dayId of ["lunes", "martes", "miercoles", "jueves", "viernes"]) {
+        const row = page.getByTestId(`day-${dayId}`)
+        await page.getByTestId("sign-positive").click()
+        await row.click()
+        if (!(await row.isDisabled())) {
+            await page.getByTestId("sign-negative").click()
+            await row.click()
+        }
+        await expect(row).toBeDisabled()
     }
     await expect(page.getByText("El cuaderno está completo")).toBeVisible()
     await page.getByTestId("total-absolutos").click()

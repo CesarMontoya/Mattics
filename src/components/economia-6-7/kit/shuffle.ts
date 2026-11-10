@@ -1,20 +1,25 @@
 /**
- * Mezcla determinista: misma semilla, mismo orden en servidor y cliente.
- * Evita `Math.random()` en render, que rompe la hidratación de Astro.
+ * Orden aleatorio para repartir resultados entre días.
+ * Rechaza los órdenes que dejan los signos alternados (+ − + − +): ese patrón
+ * permite resolver el ejercicio sin leer una sola tarjeta.
+ * Solo debe llamarse en el cliente, nunca durante el render.
  */
-export function seededShuffle<T>(items: readonly T[], seed: number): T[] {
-    const result = [...items]
-    let state = seed >>> 0
+export function randomOrder(length: number, signOf: (index: number) => number): number[] {
+    const base = Array.from({ length }, (_, index) => index)
 
-    const next = () => {
-        state = (state * 1664525 + 1013904223) % 4294967296
-        return state / 4294967296
+    for (let attempt = 0; attempt < 80; attempt++) {
+        const order = [...base]
+        for (let index = order.length - 1; index > 0; index--) {
+            const swapWith = Math.floor(Math.random() * (index + 1))
+            ;[order[index], order[swapWith]] = [order[swapWith], order[index]]
+        }
+
+        const signs = order.map(signOf)
+        const hasRepeat = signs.some((sign, index) => index > 0 && sign === signs[index - 1])
+        const isStillSorted = order.every((value, index) => value === index)
+
+        if (hasRepeat && !isStillSorted) return order
     }
 
-    for (let index = result.length - 1; index > 0; index--) {
-        const swapWith = Math.floor(next() * (index + 1))
-        ;[result[index], result[swapWith]] = [result[swapWith], result[index]]
-    }
-
-    return result
+    return base
 }

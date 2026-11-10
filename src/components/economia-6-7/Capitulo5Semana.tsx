@@ -2,7 +2,8 @@
 
 import * as React from "react"
 import { GrandmaSays, CoachMessage } from "./kit/SliceShell"
-import { WEEK_LEDGER, WEEK_TOTAL_OPTIONS } from "./content"
+import { WEEK_DAYS, WEEK_OUTCOMES, WEEK_TOTAL_OPTIONS } from "./content"
+import { randomOrder } from "./kit/shuffle"
 import { cop } from "./kit/types"
 import { Check, Minus, Plus } from "lucide-react"
 import { cn } from "@/lib/utils"
@@ -10,7 +11,11 @@ import type { StepProps } from "./kit/types"
 
 type Sign = 1 | -1
 
+/** Orden de arranque ya mezclado: el azar real llega al montar, sin saltos visibles. */
+const START_ORDER = [1, 4, 2, 0, 3]
+
 export function Capitulo5Semana({ onDone }: StepProps) {
+    const [order, setOrder] = React.useState<number[]>(START_ORDER)
     const [signed, setSigned] = React.useState<Record<string, Sign>>({})
     const [selectedSign, setSelectedSign] = React.useState<Sign | null>(null)
     const [wrongId, setWrongId] = React.useState<string | null>(null)
@@ -21,24 +26,31 @@ export function Capitulo5Semana({ onDone }: StepProps) {
     const [chosenTotal, setChosenTotal] = React.useState<string | null>(null)
     const [solved, setSolved] = React.useState(false)
 
-    const allSigned = WEEK_LEDGER.every((day) => signed[day.id])
+    // Cada estudiante recibe un reparto distinto: el lugar del día no dice el signo.
+    React.useEffect(() => {
+        setOrder(randomOrder(WEEK_OUTCOMES.length, (index) => WEEK_OUTCOMES[index].sign))
+    }, [])
+
+    const outcomes = order.map((index) => WEEK_OUTCOMES[index])
+    const rows = WEEK_DAYS.map((day, index) => ({ day, outcome: outcomes[index] }))
+    const allSigned = rows.every((row) => signed[row.day.id])
 
     const apply = (dayId: string) => {
         if (solved || signed[dayId]) return
-        const day = WEEK_LEDGER.find((candidate) => candidate.id === dayId)
-        if (!day) return
+        const row = rows.find((candidate) => candidate.day.id === dayId)
+        if (!row) return
         if (!selectedSign) {
             setMessage({ tone: "error", text: "Primero elige el signo + o el signo −." })
             return
         }
-        if (selectedSign === day.sign) {
-            setSigned((current) => ({ ...current, [dayId]: day.sign }))
+        if (selectedSign === row.outcome.sign) {
+            setSigned((current) => ({ ...current, [dayId]: row.outcome.sign }))
             setSelectedSign(null)
-            setMessage({ tone: "success", text: day.feedback })
+            setMessage({ tone: "success", text: row.outcome.feedback })
         } else {
             setWrongId(dayId)
             setSelectedSign(null)
-            setMessage({ tone: "error", text: day.feedback })
+            setMessage({ tone: "error", text: row.outcome.feedback })
             window.setTimeout(() => setWrongId(null), 600)
         }
     }
@@ -58,8 +70,8 @@ export function Capitulo5Semana({ onDone }: StepProps) {
     }
 
     let running = 0
-    const path = WEEK_LEDGER.map((day) => {
-        running += day.amount * day.sign
+    const path = outcomes.map((outcome) => {
+        running += outcome.amount * outcome.sign
         return running
     })
 
@@ -80,8 +92,8 @@ export function Capitulo5Semana({ onDone }: StepProps) {
             <div className="flex flex-wrap items-center gap-2">
                 {(
                     [
-                        { sign: 1 as Sign, label: "Ganancia", icon: <Plus className="h-4 w-4" />, tone: "emerald" },
-                        { sign: -1 as Sign, label: "Pérdida", icon: <Minus className="h-4 w-4" />, tone: "rose" },
+                        { sign: 1 as Sign, label: "Ganancia", icon: <Plus className="h-4 w-4" /> },
+                        { sign: -1 as Sign, label: "Pérdida", icon: <Minus className="h-4 w-4" /> },
                     ] as const
                 ).map((chip) => (
                     <button
@@ -104,7 +116,7 @@ export function Capitulo5Semana({ onDone }: StepProps) {
                                 ? "border-emerald-200 bg-white text-emerald-700 dark:border-emerald-900 dark:bg-zinc-900 dark:text-emerald-300"
                                 : "border-rose-200 bg-white text-rose-700 dark:border-rose-900 dark:bg-zinc-900 dark:text-rose-300",
                             selectedSign === chip.sign &&
-                                "ring-4 ring-amber-100 dark:ring-amber-900/40 -translate-y-0.5",
+                                "-translate-y-0.5 ring-4 ring-amber-100 dark:ring-amber-900/40",
                             allSigned && "opacity-40",
                         )}
                     >
@@ -115,7 +127,7 @@ export function Capitulo5Semana({ onDone }: StepProps) {
             </div>
 
             <ol className="space-y-2">
-                {WEEK_LEDGER.map((day) => {
+                {rows.map(({ day, outcome }) => {
                     const daySign = signed[day.id]
                     const locked = Boolean(daySign)
                     return (
@@ -151,14 +163,14 @@ export function Capitulo5Semana({ onDone }: StepProps) {
                                 style={wrongId === day.id ? { animation: "semana-shake 0.5s ease-in-out" } : undefined}
                             >
                                 <span aria-hidden className="text-2xl">
-                                    {day.emoji}
+                                    {outcome.emoji}
                                 </span>
                                 <span className="min-w-0 flex-1">
                                     <span className="block text-xs font-bold uppercase tracking-wide text-slate-400 dark:text-zinc-500">
-                                        {day.day}
+                                        {day.label}
                                     </span>
                                     <span className="block text-sm font-medium leading-snug text-slate-700 dark:text-zinc-200">
-                                        {day.description}
+                                        {outcome.description}
                                     </span>
                                 </span>
                                 <span
@@ -171,7 +183,9 @@ export function Capitulo5Semana({ onDone }: StepProps) {
                                             : "bg-slate-100 text-slate-500 dark:bg-zinc-800 dark:text-zinc-400",
                                     )}
                                 >
-                                    {locked ? `${daySign === 1 ? "+" : "−"}${cop(day.amount)}` : `? ${cop(day.amount)}`}
+                                    {locked
+                                        ? `${daySign === 1 ? "+" : "−"}${cop(outcome.amount)}`
+                                        : `? ${cop(outcome.amount)}`}
                                 </span>
                                 {locked && <Check className="h-4 w-4 shrink-0 text-slate-400" />}
                             </button>
@@ -189,7 +203,7 @@ export function Capitulo5Semana({ onDone }: StepProps) {
                     </p>
                     <p className="text-xs leading-relaxed text-slate-500 dark:text-zinc-400">
                         ¿Hubo ganancia o pérdida? ¿De cuánto? Los días, en orden:{" "}
-                        {WEEK_LEDGER.map((day) => `${day.sign === 1 ? "+" : "−"}${cop(day.amount)}`).join("  ")}
+                        {outcomes.map((outcome) => `${outcome.sign === 1 ? "+" : "−"}${cop(outcome.amount)}`).join("  ")}
                     </p>
                     <div className="grid gap-2 sm:grid-cols-3">
                         {WEEK_TOTAL_OPTIONS.map((option) => (
@@ -225,14 +239,12 @@ export function Capitulo5Semana({ onDone }: StepProps) {
                             0
                         </span>
                         {path.map((value, index) => (
-                            <React.Fragment key={WEEK_LEDGER[index].id}>
+                            <React.Fragment key={rows[index].day.id}>
                                 <span className="text-slate-400">→</span>
                                 <span
                                     className={cn(
                                         "rounded-full px-2.5 py-1 text-xs font-bold tabular-nums",
-                                        value >= 0
-                                            ? "bg-emerald-600 text-white"
-                                            : "bg-rose-600 text-white",
+                                        value >= 0 ? "bg-emerald-600 text-white" : "bg-rose-600 text-white",
                                     )}
                                 >
                                     {value >= 0 ? "+" : "−"}
@@ -242,9 +254,9 @@ export function Capitulo5Semana({ onDone }: StepProps) {
                         ))}
                     </div>
                     <p className="text-sm leading-relaxed text-emerald-900/90 dark:text-emerald-100/90">
-                        Cuando el acumulado baja de cero, el negocio está en pérdida: pasó el jueves, con el
-                        arreglo de la nevera. Por eso una semana puede tener días buenos y aun así terminar
-                        distinta de lo que uno cree.
+                        Cuando el acumulado baja de cero, el negocio está en pérdida: un solo día malo puede
+                        borrar lo que dejaron dos días buenos. Por eso se suma toda la semana, no solo los días
+                        buenos.
                     </p>
                 </div>
             )}

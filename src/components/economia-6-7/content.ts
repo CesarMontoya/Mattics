@@ -199,10 +199,17 @@ export const HABIT_CARDS: HabitCard[] = [
     },
 ]
 
-/** Un día del cuaderno: el resultado del día puede ser ganancia (+) o pérdida (−). */
-export interface LedgerDay {
+export const WEEK_DAYS = [
+    { id: "lunes", label: "Lunes" },
+    { id: "martes", label: "Martes" },
+    { id: "miercoles", label: "Miércoles" },
+    { id: "jueves", label: "Jueves" },
+    { id: "viernes", label: "Viernes" },
+]
+
+/** Un resultado del día: ganancia (+) o pérdida (−). */
+export interface LedgerOutcome {
     id: string
-    day: string
     emoji: string
     description: string
     amount: number
@@ -210,19 +217,22 @@ export interface LedgerDay {
     feedback: string
 }
 
-export const WEEK_LEDGER: LedgerDay[] = [
+/**
+ * Los resultados de la semana. No están atados a un día concreto: en cada
+ * partida se reparten al azar entre lunes y viernes, para que el orden no
+ * delate el signo.
+ */
+export const WEEK_OUTCOMES: LedgerOutcome[] = [
     {
-        id: "lunes",
-        day: "Lunes",
+        id: "ventas",
         emoji: "🫓",
-        description: "Empezó la semana: se vendió más de lo que se gastó.",
+        description: "Se vendió más de lo que se gastó.",
         amount: 12000,
         sign: 1,
         feedback: "Entró más de lo que salió: el día dejó ganancia, y se escribe con signo positivo.",
     },
     {
-        id: "martes",
-        day: "Martes",
+        id: "fruta",
         emoji: "🍎",
         description: "Se dañó una caja de fruta y hubo que reponerla: se gastó más de lo que se vendió.",
         amount: 8000,
@@ -230,17 +240,15 @@ export const WEEK_LEDGER: LedgerDay[] = [
         feedback: "Salió más de lo que entró: el día cerró en pérdida. La pérdida se escribe con signo negativo.",
     },
     {
-        id: "miercoles",
-        day: "Miércoles",
+        id: "suben",
         emoji: "🧃",
-        description: "Las ventas volvieron a subir y superaron los gastos del día.",
+        description: "Las ventas subieron y superaron los gastos del día.",
         amount: 5000,
         sign: 1,
         feedback: "Volvió a dejar ganancia: entra más de lo que sale, signo positivo.",
     },
     {
-        id: "jueves",
-        day: "Jueves",
+        id: "nevera",
         emoji: "🧊",
         description: "Se pagó el arreglo de la nevera y las ventas no alcanzaron a cubrirlo.",
         amount: 15000,
@@ -248,8 +256,7 @@ export const WEEK_LEDGER: LedgerDay[] = [
         feedback: "Un gasto grande que las ventas no alcanzaron a cubrir: el día cerró en pérdida.",
     },
     {
-        id: "viernes",
-        day: "Viernes",
+        id: "feria",
         emoji: "🎪",
         description: "Feria en el colegio: se vendió todo lo que había en la tienda.",
         amount: 9000,
