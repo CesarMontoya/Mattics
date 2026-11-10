@@ -4,6 +4,7 @@ import * as React from "react"
 import {
   BookOpen,
   Bot,
+  Coins,
   Frame,
   LifeBuoy,
   PieChart,
@@ -93,6 +94,17 @@ const data = {
         {
           title: "Energía",
           url: "/tecnologia-8/energia",
+        },
+      ],
+    },
+    {
+      title: "Económica 6-7",
+      url: "#",
+      icon: Coins,
+      items: [
+        {
+          title: "La tienda de la abuela",
+          url: "/economia-6-7",
         },
       ],
     },
