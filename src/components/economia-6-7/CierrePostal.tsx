@@ -6,7 +6,7 @@ import { Mural } from "./kit/Mural"
 import { MURAL_COLORS, PERSONAL_GOALS } from "./content"
 import { cop } from "./kit/types"
 import { cn } from "@/lib/utils"
-import { Printer, Sparkles } from "lucide-react"
+import { Sparkles } from "lucide-react"
 import type { MuralPiece, StepProps } from "./kit/types"
 
 const PAINTABLE: { id: MuralPiece; label: string }[] = [
@@ -16,24 +16,6 @@ const PAINTABLE: { id: MuralPiece; label: string }[] = [
     { id: "maceta", label: "Maceta" },
 ]
 
-const PRINT_STYLES = `
-@media print {
-  body * { visibility: hidden !important; }
-  .postal-print, .postal-print * { visibility: visible !important; }
-  .postal-print {
-    position: absolute !important;
-    inset: 0 !important;
-    margin: 0 auto !important;
-    width: 100% !important;
-    max-width: 720px !important;
-    border: none !important;
-    box-shadow: none !important;
-    background: #fff !important;
-    color: #111 !important;
-  }
-  .no-print { display: none !important; }
-}
-`
 
 export function CierrePostal({ onDone, studentNames = [] }: StepProps) {
     const [piece, setPiece] = React.useState<MuralPiece>("toldo")
@@ -56,14 +38,12 @@ export function CierrePostal({ onDone, studentNames = [] }: StepProps) {
 
     return (
         <div className="space-y-5">
-            <style>{PRINT_STYLES}</style>
-
             <GrandmaSays>
                 Ya sabes lo que yo tardé años en aprender. Ahora píntame la tienda como quieras y llévate tu plan:
                 lo que no se escribe, no se cumple.
             </GrandmaSays>
 
-            <div className="no-print space-y-3">
+            <div className="space-y-3">
                 <p className="text-xs font-bold uppercase tracking-[0.14em] text-slate-400 dark:text-zinc-500">
                     1. Elige una parte y píntala
                 </p>
@@ -106,7 +86,7 @@ export function CierrePostal({ onDone, studentNames = [] }: StepProps) {
                 </div>
             </div>
 
-            <div className="postal-print space-y-4 rounded-3xl border-2 border-amber-200 bg-gradient-to-b from-amber-50 to-white p-5 dark:from-zinc-900 dark:to-zinc-950">
+            <div className="space-y-4 rounded-3xl border-2 border-amber-200 bg-gradient-to-b from-amber-50 to-white p-5 dark:from-zinc-900 dark:to-zinc-950">
                 <div className="flex items-start justify-between gap-4">
                     <div>
                         <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-amber-700 dark:text-amber-400">
@@ -137,7 +117,7 @@ export function CierrePostal({ onDone, studentNames = [] }: StepProps) {
                 </p>
             </div>
 
-            <div className="no-print space-y-4">
+            <div className="space-y-4">
                 <div>
                     <p className="mb-2 text-xs font-bold uppercase tracking-[0.14em] text-slate-400 dark:text-zinc-500">
                         2. Elige tu meta
@@ -192,15 +172,6 @@ export function CierrePostal({ onDone, studentNames = [] }: StepProps) {
                         Te toca guardar {cop(weekly)} cada semana.
                     </p>
                 </div>
-
-                <button
-                    type="button"
-                    onClick={() => window.print()}
-                    className="inline-flex items-center gap-2 rounded-full bg-slate-900 px-5 py-2.5 text-sm font-bold text-white transition-all hover:bg-slate-700 dark:bg-white dark:text-slate-900"
-                >
-                    <Printer className="h-4 w-4" />
-                    Imprimir mi postal
-                </button>
 
                 <p className="flex items-start gap-2 text-xs leading-relaxed text-slate-500 dark:text-zinc-400">
                     <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" />

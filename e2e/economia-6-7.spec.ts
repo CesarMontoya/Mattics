@@ -107,7 +107,6 @@ test("la actividad se completa de punta a punta", async ({ page }) => {
     await expect(page.getByText("Mi plan de ahorro")).toBeVisible()
     await page.getByRole("button", { name: "Vitrina" }).click()
     await page.getByRole("button", { name: "Verde" }).click()
-    await expect(page.getByRole("button", { name: /Imprimir mi postal/ })).toBeVisible()
     await expect(page.getByText(/Guardar/)).toBeVisible()
 })
 
