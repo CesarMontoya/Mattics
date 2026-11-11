@@ -1,6 +1,6 @@
 import type { APIRoute } from "astro";
 import { requireAdminApi } from "@/lib/clases/guard";
-import { closeSession, createSession, deleteSession } from "@/lib/actividad/store";
+import { closeSession, createSession, deleteSession, setSubmissionFinished } from "@/lib/actividad/store";
 
 export const prerender = false;
 
@@ -29,6 +29,14 @@ export const POST: APIRoute = async (context) => {
       return redirect(`/admin/actividades?error=crear&detail=${encodeURIComponent(created.error ?? "")}`);
     }
     return redirect(`/admin/actividades/${created.session.id}?ok=1`);
+  }
+
+  if (action === "finish" || action === "unfinish") {
+    const submissionId = String(form.get("submission_id") ?? "");
+    const sessionId = String(form.get("session_id") ?? "");
+    if (!submissionId || !sessionId) return redirect("/admin/actividades");
+    await setSubmissionFinished(submissionId, action === "finish");
+    return redirect(`/admin/actividades/${sessionId}/${submissionId}?ok=1`);
   }
 
   const id = String(form.get("id") ?? "");
