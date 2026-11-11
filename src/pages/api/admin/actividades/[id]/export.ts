@@ -2,7 +2,7 @@ import type { APIRoute } from "astro";
 import * as XLSX from "xlsx";
 import { requireAdminApi } from "@/lib/clases/guard";
 import { getSessionById, listSubmissions } from "@/lib/actividad/store";
-import { PASOS_TOTAL, contarPasos, erroresPorPaso, resumenRespuestas } from "@/lib/actividad/resumen";
+import { PASOS_TOTAL, agruparIntentos, contarIntentos, contarPasos, resumenRespuestas } from "@/lib/actividad/resumen";
 import { formatFechaHora } from "@/lib/clases/fecha";
 
 export const prerender = false;
@@ -24,13 +24,17 @@ export const GET: APIRoute = async (context) => {
 
   const rows = submissions.map((row) => {
     const respuestas = resumenRespuestas(row.answers);
+    const secciones = agruparIntentos(row.attempts);
+    const correctos = secciones.reduce((sum, section) => sum + section.correct, 0);
+    const incorrectos = secciones.reduce((sum, section) => sum + section.wrong, 0);
     return {
-      estudiante: row.student_name,
-      grupo: row.group_names.join(", "),
+      estudiantes: [row.student_name, ...row.group_names].join(" | "),
       pasos: `${contarPasos(row.progress)} de ${PASOS_TOTAL}`,
       estado: row.completed_at ? "Terminada" : "En curso",
+      intentos: contarIntentos(row.attempts),
+      correctos,
+      incorrectos,
       respuestas: respuestas.join(" | "),
-      intentos_adicionales: erroresPorPaso(row.progress),
       actualizado: formatFechaHora(row.updated_at),
     };
   });
@@ -39,7 +43,7 @@ export const GET: APIRoute = async (context) => {
   XLSX.utils.book_append_sheet(
     wb,
     XLSX.utils.json_to_sheet(rows, {
-      header: ["estudiante", "grupo", "pasos", "estado", "respuestas", "intentos_adicionales", "actualizado"],
+      header: ["estudiantes", "pasos", "estado", "intentos", "correctos", "incorrectos", "respuestas", "actualizado"],
     }),
     "Entregas",
   );

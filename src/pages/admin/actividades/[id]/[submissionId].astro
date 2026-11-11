@@ -1,0 +1,130 @@
+---
+export const prerender = false;
+
+import AdminLayout from "@/layouts/AdminLayout.astro";
+import { requireAdminPage } from "@/lib/clases/guard";
+import { getSessionById, getSubmissionById } from "@/lib/actividad/store";
+import { PASOS_TOTAL, agruparIntentos, contarIntentos, contarPasos } from "@/lib/actividad/resumen";
+import { formatFechaHora } from "@/lib/clases/fecha";
+
+const guard = await requireAdminPage(Astro);
+if (!guard) return Astro.redirect("/admin/login", 302);
+
+const sessionId = Astro.params.id ?? "";
+const submissionId = Astro.params.submissionId ?? "";
+
+const session = await getSessionById(sessionId);
+const submission = await getSubmissionById(submissionId);
+if (!session || !submission || submission.session_id !== session.id) {
+  return Astro.redirect(`/admin/actividades/${sessionId}?error=no-existe`, 302);
+}
+
+const nombres = [submission.student_name, ...submission.group_names];
+const pasos = contarPasos(submission.progress);
+const intentos = contarIntentos(submission.attempts);
+const secciones = agruparIntentos(submission.attempts);
+const correctas = secciones.reduce((sum, section) => sum + section.correct, 0);
+const incorrectas = secciones.reduce((sum, section) => sum + section.wrong, 0);
+const ok = Astro.url.searchParams.get("ok");
+---
+
+<AdminLayout title={`${submission.student_name} · Entregas`} active="actividades">
+  <a href={`/admin/actividades/${session.id}`} class="text-sm text-muted-foreground hover:underline">
+    ← {session.title}
+  </a>
+
+  <div class="mt-3 mb-6 flex flex-wrap items-start justify-between gap-4">
+    <div>
+      <h1 class="text-2xl font-bold leading-tight">
+        {nombres.map((nombre) => <span class="block">{nombre}</span>)}
+      </h1>
+      <p class="mt-2 text-sm text-muted-foreground">
+        Entrega iniciada el {formatFechaHora(submission.created_at)} · {pasos} de {PASOS_TOTAL} pasos · {intentos} intentos
+      </p>
+      <p class="mt-1 text-sm">
+        {submission.completed_at
+          ? <span class="text-xs rounded-full bg-green-50 text-green-700 border border-green-200 px-2 py-0.5">Terminada</span>
+          : <span class="text-xs rounded-full bg-amber-50 text-amber-700 border border-amber-200 px-2 py-0.5">En curso</span>}
+      </p>
+    </div>
+
+    <form method="POST" action="/api/admin/actividades">
+      <input type="hidden" name="session_id" value={session.id} />
+      <input type="hidden" name="submission_id" value={submission.id} />
+      <input type="hidden" name="action" value={submission.completed_at ? "unfinish" : "finish"} />
+      <button type="submit" class="rounded-lg border border-border px-3 py-1.5 text-sm hover:bg-muted">
+        {submission.completed_at ? "Devolver a en curso" : "Marcar como terminada"}
+      </button>
+    </form>
+  </div>
+
+  {ok && <p class="text-sm text-green-700 bg-green-50 border border-green-200 rounded-lg px-3 py-2 mb-4">Guardado correctamente.</p>}
+
+  <div class="grid gap-3 sm:grid-cols-4 mb-6">
+    <div class="rounded-xl border border-border bg-card p-4">
+      <p class="text-xs text-muted-foreground">Intentos</p>
+      <p class="text-2xl font-bold">{intentos}</p>
+    </div>
+    <div class="rounded-xl border border-border bg-card p-4">
+      <p class="text-xs text-muted-foreground">Correctos</p>
+      <p class="text-2xl font-bold text-green-700">{correctas}</p>
+    </div>
+    <div class="rounded-xl border border-border bg-card p-4">
+      <p class="text-xs text-muted-foreground">Incorrectos</p>
+      <p class="text-2xl font-bold text-red-600">{incorrectas}</p>
+    </div>
+    <div class="rounded-xl border border-border bg-card p-4">
+      <p class="text-xs text-muted-foreground">Última actividad</p>
+      <p class="text-sm font-semibold">{formatFechaHora(submission.updated_at)}</p>
+    </div>
+  </div>
+
+  {secciones.length === 0 ? (
+    <div class="rounded-xl border border-dashed border-border p-8 text-center text-muted-foreground">
+      Sin intentos registrados todavía.
+    </div>
+  ) : (
+    <div class="grid gap-4">
+      {secciones.map((section) => (
+        <section class="rounded-xl border border-border bg-card overflow-hidden">
+          <header class="flex flex-wrap items-center justify-between gap-2 px-4 py-3 border-b border-border bg-muted/50">
+            <h2 class="font-semibold">{section.title}</h2>
+            <p class="text-xs text-muted-foreground">
+              <span class="text-green-700 font-medium">{section.correct} correctos</span>
+              {" · "}
+              <span class="text-red-600 font-medium">{section.wrong} incorrectos</span>
+              {section.neutral > 0 && <> · {section.neutral} sin corrección</>}
+            </p>
+          </header>
+          <ul class="divide-y divide-border">
+            {section.items.map((item) => (
+              <li class="flex items-start gap-3 px-4 py-2.5 text-sm">
+                <span class:list={[
+                  "mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[11px] font-bold text-white",
+                  item.correct === true ? "bg-green-600" : item.correct === false ? "bg-red-600" : "bg-slate-400",
+                ]}>
+                  {item.correct === true ? "✓" : item.correct === false ? "✕" : "•"}
+                </span>
+                <span class="min-w-0 flex-1">
+                  <span class="font-medium">{item.value}</span>
+                  {item.detail && <span class="text-muted-foreground"> — {item.detail}</span>}
+                </span>
+                <span class="shrink-0 text-xs text-muted-foreground">
+                  {item.at ? formatFechaHora(new Date(item.at)) : ""}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ))}
+    </div>
+  )}
+
+  <div class="mt-8 rounded-xl border border-border bg-card p-4">
+    <h2 class="font-semibold mb-2">Respuestas guardadas</h2>
+    <pre class="text-xs overflow-x-auto text-muted-foreground">{JSON.stringify({
+      progress: submission.progress,
+      answers: submission.answers,
+    }, null, 2)}</pre>
+  </div>
+</AdminLayout>

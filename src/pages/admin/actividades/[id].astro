@@ -4,7 +4,7 @@ export const prerender = false;
 import AdminLayout from "@/layouts/AdminLayout.astro";
 import { requireAdminPage } from "@/lib/clases/guard";
 import { getSessionById, listSubmissions } from "@/lib/actividad/store";
-import { PASOS_TOTAL, contarPasos, resumenRespuestas } from "@/lib/actividad/resumen";
+import { PASOS_TOTAL, contarIntentos, contarPasos } from "@/lib/actividad/resumen";
 import { formatFecha, formatFechaHora } from "@/lib/clases/fecha";
 
 const guard = await requireAdminPage(Astro);
@@ -34,8 +34,7 @@ const ok = params.get("ok");
     <div>
       <h1 class="text-3xl font-bold">{session.title}</h1>
       <p class="text-sm text-muted-foreground mt-1">
-        Creada el {formatFecha(session.created_at)} ·
-        {session.closed_at ? " cerrada" : " abierta"}
+        Creada el {formatFecha(session.created_at)} · {session.closed_at ? "cerrada" : "abierta"}
       </p>
     </div>
     <div class="rounded-xl border border-border bg-card px-5 py-3 text-center">
@@ -89,21 +88,22 @@ const ok = params.get("ok");
             <th class="text-left px-4 py-2">Estudiantes</th>
             <th class="text-left px-4 py-2">Pasos</th>
             <th class="text-left px-4 py-2">Estado</th>
-            <th class="text-left px-4 py-2">Respuestas</th>
+            <th class="text-left px-4 py-2">Intentos</th>
             <th class="text-left px-4 py-2">Actualizado</th>
+            <th class="px-4 py-2"></th>
           </tr>
         </thead>
         <tbody>
           {submissions.map((row) => {
             const pasos = contarPasos(row.progress);
-            const respuestas = resumenRespuestas(row.answers);
+            const intentos = contarIntentos(row.attempts);
+            const nombres = [row.student_name, ...row.group_names];
             return (
               <tr class="border-t border-border align-top">
                 <td class="px-4 py-3">
-                  <p class="font-medium">{row.student_name}</p>
-                  {row.group_names.length > 0 && (
-                    <p class="text-xs text-muted-foreground">Grupo: {row.group_names.join(", ")}</p>
-                  )}
+                  {nombres.map((nombre) => (
+                    <p class="font-medium leading-snug">{nombre}</p>
+                  ))}
                 </td>
                 <td class="px-4 py-3 whitespace-nowrap">
                   <span class={pasos === PASOS_TOTAL ? "text-green-700 font-medium" : ""}>{pasos} / {PASOS_TOTAL}</span>
@@ -113,13 +113,14 @@ const ok = params.get("ok");
                     ? <span class="text-xs rounded-full bg-green-50 text-green-700 border border-green-200 px-2 py-0.5">Terminada</span>
                     : <span class="text-xs rounded-full bg-amber-50 text-amber-700 border border-amber-200 px-2 py-0.5">En curso</span>}
                 </td>
-                <td class="px-4 py-3">
-                  {respuestas.length === 0
-                    ? <span class="text-muted-foreground">—</span>
-                    : <ul class="space-y-0.5">{respuestas.map((line) => <li class="text-xs">{line}</li>)}</ul>}
-                </td>
+                <td class="px-4 py-3 whitespace-nowrap">{intentos}</td>
                 <td class="px-4 py-3 whitespace-nowrap text-xs text-muted-foreground">
                   {formatFechaHora(row.updated_at)}
+                </td>
+                <td class="px-4 py-3 whitespace-nowrap text-right">
+                  <a href={`/admin/actividades/${session.id}/${row.id}`} class="text-sm text-blue-600 hover:underline">
+                    Ver detalle
+                  </a>
                 </td>
               </tr>
             );
