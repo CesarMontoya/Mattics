@@ -26,7 +26,7 @@ const OPTIONS = [
     },
 ]
 
-export function Prologo({ onDone }: StepProps) {
+export function Prologo({ onDone, onAttempt }: StepProps) {
     const [chosen, setChosen] = React.useState<string | null>(null)
     const option = OPTIONS.find((candidate) => candidate.id === chosen)
 
@@ -53,6 +53,7 @@ export function Prologo({ onDone }: StepProps) {
                             type="button"
                             onClick={() => {
                                 setChosen(candidate.id)
+                                onAttempt?.({ value: candidate.label, correct: null })
                                 onDone({ answers: { eleccion: candidate.id } })
                             }}
                             className={cn(

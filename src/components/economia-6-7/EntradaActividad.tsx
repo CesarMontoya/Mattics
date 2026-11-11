@@ -40,7 +40,8 @@ export default function EntradaActividad({ code, title }: EntradaActividadProps)
         async (payload: {
             progress: Record<string, unknown>
             answers: Record<string, unknown>
-            completed: string[]
+            attempts: unknown[]
+            steps: string[]
             done: boolean
         }) => {
             const actual = entregaRef.current

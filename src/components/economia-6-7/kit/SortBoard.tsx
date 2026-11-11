@@ -22,10 +22,18 @@ export interface SortZone {
     tone: "positive" | "negative"
 }
 
+export interface SortAttempt {
+    value: string
+    detail: string
+    correct: boolean
+}
+
 interface SortBoardProps {
     items: SortItem[]
     zones: SortZone[]
     onSolved: (attempts: number) => void
+    /** Cada colocación, acertada o no, para registrar el proceso. */
+    onAttempt?: (attempt: SortAttempt) => void
 }
 
 const zoneStyles: Record<SortZone["tone"], { base: string; active: string; badge: string }> = {
@@ -41,7 +49,7 @@ const zoneStyles: Record<SortZone["tone"], { base: string; active: string; badge
     },
 }
 
-export function SortBoard({ items, zones, onSolved }: SortBoardProps) {
+export function SortBoard({ items, zones, onSolved, onAttempt }: SortBoardProps) {
     const [placed, setPlaced] = React.useState<Record<string, string>>({})
     const [selected, setSelected] = React.useState<string | null>(null)
     const [wrongId, setWrongId] = React.useState<string | null>(null)
@@ -57,6 +65,9 @@ export function SortBoard({ items, zones, onSolved }: SortBoardProps) {
             if (solvedRef.current) return
             const item = items.find((candidate) => candidate.id === itemId)
             if (!item || placed[itemId]) return
+
+            const zone = zones.find((candidate) => candidate.id === zoneId)
+            onAttempt?.({ value: item.label, detail: zone?.label ?? zoneId, correct: item.kind === zoneId })
 
             if (item.kind === zoneId) {
                 const next = { ...placed, [itemId]: zoneId }
@@ -75,7 +86,7 @@ export function SortBoard({ items, zones, onSolved }: SortBoardProps) {
                 window.setTimeout(() => setWrongId(null), 600)
             }
         },
-        [attempts, items, onSolved, placed],
+        [attempts, items, onAttempt, onSolved, placed, zones],
     )
 
     const onCardClick = (itemId: string) => {

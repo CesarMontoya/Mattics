@@ -13,7 +13,7 @@ const ZONES = [
     { id: "gasto", label: "Sale de la caja", hint: "Dinero que se va.", tone: "negative" as const },
 ]
 
-export function Capitulo2Caja({ onDone }: StepProps) {
+export function Capitulo2Caja({ onDone, onAttempt }: StepProps) {
     const [solved, setSolved] = React.useState(false)
     // Orden distinto por estudiante: sin mezcla, cada columna cae siempre en el
     // mismo tipo y el ejercicio se resuelve por posición, no por contenido.
@@ -34,6 +34,7 @@ export function Capitulo2Caja({ onDone }: StepProps) {
             <SortBoard
                 items={movements}
                 zones={ZONES}
+                onAttempt={onAttempt}
                 onSolved={(attempts) => {
                     setSolved(true)
                     onDone({ attempts })

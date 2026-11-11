@@ -72,3 +72,76 @@ export function erroresPorPaso(progress: Record<string, unknown> | null | undefi
   }
   return total;
 }
+
+export interface AttemptView {
+  label: string;
+  value: string;
+  detail: string;
+  correct: boolean | null;
+  at: number | null;
+}
+
+export interface SectionAttempts {
+  step: string;
+  title: string;
+  items: AttemptView[];
+  correct: number;
+  wrong: number;
+  neutral: number;
+}
+
+const ORDEN_PASOS = ["prologo", "dinero", "caja", "precio", "consejos", "semana", "postal"];
+
+/** Agrupa el registro de intentos por sección, en el orden de la actividad. */
+export function agruparIntentos(attempts: unknown[] | null | undefined): SectionAttempts[] {
+  const sections = new Map<string, SectionAttempts>();
+
+  for (const raw of attempts ?? []) {
+    if (!raw || typeof raw !== "object") continue;
+    const item = raw as Record<string, unknown>;
+    if (typeof item.step !== "string" || typeof item.value !== "string") continue;
+    const step = item.step;
+    const correct = typeof item.correct === "boolean" ? item.correct : null;
+
+    const section =
+      sections.get(step) ??
+      ({
+        step,
+        title: ETIQUETAS_PASO[step] ?? step,
+        items: [],
+        correct: 0,
+        wrong: 0,
+        neutral: 0,
+      } satisfies SectionAttempts);
+
+    section.items.push({
+      label: "",
+      value: typeof item.value === "string" ? item.value : "",
+      detail: typeof item.detail === "string" ? item.detail : "",
+      correct,
+      at: typeof item.at === "number" ? item.at : null,
+    });
+    if (correct === true) section.correct += 1;
+    else if (correct === false) section.wrong += 1;
+    else section.neutral += 1;
+
+    sections.set(step, section);
+  }
+
+  return [...sections.values()].sort((a, b) => {
+    const ia = ORDEN_PASOS.indexOf(a.step);
+    const ib = ORDEN_PASOS.indexOf(b.step);
+    return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib);
+  });
+}
+
+export function contarIntentos(attempts: unknown[] | null | undefined): number {
+  if (!Array.isArray(attempts)) return 0;
+  return attempts.filter(
+    (raw) =>
+      raw !== null &&
+      typeof raw === "object" &&
+      typeof (raw as Record<string, unknown>).step === "string" &&
+      typeof (raw as Record<string, unknown>).value === "string",
+  ).length;
+}

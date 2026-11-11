@@ -25,6 +25,7 @@ export type SubmissionRow = {
   group_names: string[];
   progress: Record<string, unknown>;
   answers: Record<string, unknown>;
+  attempts: unknown[];
   completed_at: string | null;
   created_at: string;
   updated_at: string;
@@ -34,6 +35,14 @@ export type SessionWithCount = SessionRow & { submissions: number };
 
 function db() {
   return createSupabaseServiceRoleClient();
+}
+
+const CAMPOS_BASE = "id,session_id,student_name,group_names,progress,answers";
+const CAMPOS_COMPLETOS = `${CAMPOS_BASE},attempts`;
+
+/** La columna `attempts` llega con la migración 0007. Mientras no esté, no se rompe nada. */
+function faltaColumna(error: { code?: string } | null): boolean {
+  return error?.code === "42703" || error?.code === "PGRST204";
 }
 
 export async function findSessionByCode(code: string): Promise<SessionRow | null> {
@@ -110,15 +119,20 @@ export async function getSessionById(id: string): Promise<SessionRow | null> {
 }
 
 export async function listSubmissions(sessionId: string): Promise<SubmissionRow[]> {
-  const { data, error } = await db()
-    .from("activity_submissions")
-    .select(
-      "id,session_id,student_name,group_names,progress,answers,completed_at,created_at,updated_at",
-    )
-    .eq("session_id", sessionId)
-    .order("created_at", { ascending: true });
-  if (error || !data) return [];
-  return data as SubmissionRow[];
+  const base = (columns: string) =>
+    db()
+      .from("activity_submissions")
+      .select(`${columns},completed_at,created_at,updated_at`)
+      .eq("session_id", sessionId)
+      .order("created_at", { ascending: true });
+
+  const first = await base(CAMPOS_COMPLETOS);
+  if (!first.error && first.data) return first.data as SubmissionRow[];
+  if (!faltaColumna(first.error)) return [];
+
+  const fallback = await base(CAMPOS_BASE);
+  if (fallback.error || !fallback.data) return [];
+  return (fallback.data as Omit<SubmissionRow, "attempts">[]).map((row) => ({ ...row, attempts: [] }));
 }
 
 export async function createSubmission(input: {
@@ -145,20 +159,60 @@ export async function updateSubmissionByToken(
   patch: {
     progress?: Record<string, unknown>;
     answers?: Record<string, unknown>;
+    attempts?: unknown[];
     completed?: boolean;
   },
 ): Promise<{ ok: boolean; error?: string }> {
   const update: Record<string, unknown> = { updated_at: new Date().toISOString() };
   if (patch.progress) update.progress = patch.progress;
   if (patch.answers) update.answers = patch.answers;
-  if (patch.completed) update.completed_at = new Date().toISOString();
+  if (patch.attempts) update.attempts = patch.attempts;
+  if (typeof patch.completed === "boolean") {
+    update.completed_at = patch.completed ? new Date().toISOString() : null;
+  }
 
-  const { error } = await db()
+  const first = await db().from("activity_submissions").update(update).eq("token", token);
+  if (!first.error) return { ok: true };
+
+  // Sin la columna `attempts` (migración 0007 pendiente) se guarda el resto.
+  if (faltaColumna(first.error) && "attempts" in update) {
+    const { attempts: _omit, ...rest } = update as Record<string, unknown>;
+    const retry = await db().from("activity_submissions").update(rest).eq("token", token);
+    if (!retry.error) return { ok: true };
+    return { ok: false, error: retry.error.message };
+  }
+
+  return { ok: false, error: first.error.message };
+}
+
+export async function setSubmissionFinished(id: string, finished: boolean): Promise<void> {
+  await db()
     .from("activity_submissions")
-    .update(update)
-    .eq("token", token);
-  if (error) return { ok: false, error: error.message };
-  return { ok: true };
+    .update({
+      completed_at: finished ? new Date().toISOString() : null,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", id);
+}
+
+export async function getSubmissionById(
+  id: string,
+): Promise<(SubmissionRow & { session_id: string }) | null> {
+  const first = await db()
+    .from("activity_submissions")
+    .select(`${CAMPOS_COMPLETOS},completed_at,created_at,updated_at`)
+    .eq("id", id)
+    .maybeSingle();
+  if (!first.error && first.data) return first.data as SubmissionRow;
+  if (!faltaColumna(first.error)) return null;
+
+  const fallback = await db()
+    .from("activity_submissions")
+    .select(`${CAMPOS_BASE},completed_at,created_at,updated_at`)
+    .eq("id", id)
+    .maybeSingle();
+  if (fallback.error || !fallback.data) return null;
+  return { ...(fallback.data as Omit<SubmissionRow, "attempts">), attempts: [] };
 }
 
 export async function closeSession(id: string, closed: boolean): Promise<void> {

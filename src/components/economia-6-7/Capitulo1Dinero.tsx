@@ -6,7 +6,7 @@ import { OrderRail } from "./kit/OrderRail"
 import { MONEY_TIMELINE } from "./content"
 import type { StepProps } from "./kit/types"
 
-export function Capitulo1Dinero({ onDone }: StepProps) {
+export function Capitulo1Dinero({ onDone, onAttempt }: StepProps) {
     return (
         <div className="space-y-5">
             <GrandmaSays>
@@ -19,7 +19,11 @@ export function Capitulo1Dinero({ onDone }: StepProps) {
                 antiguo al más reciente.
             </p>
 
-            <OrderRail items={MONEY_TIMELINE} onSolved={(attempts) => onDone({ attempts })} />
+            <OrderRail
+                items={MONEY_TIMELINE}
+                onAttempt={onAttempt}
+                onSolved={(attempts) => onDone({ attempts })}
+            />
         </div>
     )
 }

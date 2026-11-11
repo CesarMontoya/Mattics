@@ -12,7 +12,7 @@ const MAX_PROFIT = JUICE_STAND.glassesPerDay * (JUICE_STAND.maxPrice - JUICE_STA
 const SPAN = MAX_PROFIT - MIN_PROFIT
 const ZERO_RATIO = (0 - MIN_PROFIT) / SPAN
 
-export function Capitulo3Precio({ onDone }: StepProps) {
+export function Capitulo3Precio({ onDone, onAttempt }: StepProps) {
     const [price, setPrice] = React.useState(2000)
     const [solved, setSolved] = React.useState(false)
     const [feedback, setFeedback] = React.useState<{ tone: "success" | "error" | "info"; text: string } | null>(null)
@@ -25,6 +25,12 @@ export function Capitulo3Precio({ onDone }: StepProps) {
     const barWidth = Math.abs(dailyProfit) / SPAN
 
     const confirm = () => {
+        onAttempt?.({
+            value: cop(price),
+            detail: isProfit ? `Ganancia de ${cop(dailyProfit)}` : `Pérdida de ${cop(Math.abs(dailyProfit))}`,
+            correct: dailyProfit >= JUICE_STAND.goalProfit,
+        })
+
         if (dailyProfit >= JUICE_STAND.goalProfit) {
             setSolved(true)
             setFeedback({

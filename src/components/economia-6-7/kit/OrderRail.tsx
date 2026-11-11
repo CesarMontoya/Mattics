@@ -6,9 +6,17 @@ import { Check, RotateCcw, X } from "lucide-react"
 import { CoachMessage } from "./SliceShell"
 import type { RailItem } from "../content"
 
+export interface OrderAttempt {
+    value: string
+    detail: string
+    correct: boolean
+}
+
 interface OrderRailProps {
     items: RailItem[]
     onSolved: (attempts: number) => void
+    /** Cada revisión del orden, acertada o no, para registrar el proceso. */
+    onAttempt?: (attempt: OrderAttempt) => void
 }
 
 /** Orden inicial fijo (no aleatorio) para que la hidratación sea estable. */
@@ -16,7 +24,7 @@ const START_ORDER = [1, 3, 0, 2]
 
 type SlotMark = "ok" | "bad" | null
 
-export function OrderRail({ items, onSolved }: OrderRailProps) {
+export function OrderRail({ items, onSolved, onAttempt }: OrderRailProps) {
     const [slots, setSlots] = React.useState<(string | null)[]>(() => items.map(() => null))
     const [marks, setMarks] = React.useState<SlotMark[]>(() => items.map(() => null))
     const [selected, setSelected] = React.useState<string | null>(null)
@@ -60,6 +68,14 @@ export function OrderRail({ items, onSolved }: OrderRailProps) {
         const nextMarks = slots.map((id, index) => (id === items[index].id ? "ok" : "bad")) as SlotMark[]
         setMarks(nextMarks)
         const wrongCount = nextMarks.filter((mark) => mark === "bad").length
+        const order = slots
+            .map((id) => items.find((item) => item.id === id)?.label ?? "?")
+            .join(" → ")
+        onAttempt?.({
+            value: order,
+            detail: wrongCount === 0 ? "Orden correcto" : `${wrongCount} pasos mal ubicados`,
+            correct: wrongCount === 0,
+        })
 
         if (wrongCount === 0) {
             solvedRef.current = true

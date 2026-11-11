@@ -14,7 +14,7 @@ type Sign = 1 | -1
 /** Orden de arranque ya mezclado: el azar real llega al montar, sin saltos visibles. */
 const START_ORDER = [1, 4, 2, 0, 3]
 
-export function Capitulo5Semana({ onDone }: StepProps) {
+export function Capitulo5Semana({ onDone, onAttempt }: StepProps) {
     const [order, setOrder] = React.useState<number[]>(START_ORDER)
     const [signed, setSigned] = React.useState<Record<string, Sign>>({})
     const [selectedSign, setSelectedSign] = React.useState<Sign | null>(null)
@@ -44,6 +44,12 @@ export function Capitulo5Semana({ onDone }: StepProps) {
             setMessage({ tone: "error", text: "Primero elige el signo + o el signo −." })
             return
         }
+        onAttempt?.({
+            value: `${row.day.label}: ${selectedSign === 1 ? "+" : "−"}${cop(row.outcome.amount)}`,
+            detail: selectedSign === row.outcome.sign ? "Signo correcto" : "Signo equivocado",
+            correct: selectedSign === row.outcome.sign,
+        })
+
         if (selectedSign === row.outcome.sign) {
             setSigned((current) => ({ ...current, [dayId]: row.outcome.sign }))
             setSelectedSign(null)
@@ -61,6 +67,7 @@ export function Capitulo5Semana({ onDone }: StepProps) {
         const option = WEEK_TOTAL_OPTIONS.find((candidate) => candidate.id === optionId)
         if (!option) return
         setChosenTotal(optionId)
+        onAttempt?.({ value: option.label, detail: "Cierre de la semana", correct: Boolean(option.correct) })
         if (option.correct) {
             setSolved(true)
             setMessage({ tone: "success", text: option.feedback })

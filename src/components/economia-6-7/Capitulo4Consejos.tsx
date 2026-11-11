@@ -12,7 +12,7 @@ const ZONES = [
     { id: "malo", label: "Hábito que la gasta sin darse cuenta", hint: "Decisiones que la ponen en riesgo.", tone: "negative" as const },
 ]
 
-export function Capitulo4Consejos({ onDone }: StepProps) {
+export function Capitulo4Consejos({ onDone, onAttempt }: StepProps) {
     const [solved, setSolved] = React.useState(false)
     // Orden distinto por estudiante: evita que la columna izquierda sea siempre
     // "bueno" y la derecha "malo", que permite resolver sin leer.
@@ -33,6 +33,7 @@ export function Capitulo4Consejos({ onDone }: StepProps) {
             <SortBoard
                 items={cards}
                 zones={ZONES}
+                onAttempt={onAttempt}
                 onSolved={(attempts) => {
                     setSolved(true)
                     onDone({ attempts })

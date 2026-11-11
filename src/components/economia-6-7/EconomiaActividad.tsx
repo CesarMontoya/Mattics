@@ -13,7 +13,7 @@ import { Capitulo3Precio } from "./Capitulo3Precio"
 import { Capitulo4Consejos } from "./Capitulo4Consejos"
 import { Capitulo5Semana } from "./Capitulo5Semana"
 import { CierrePostal } from "./CierrePostal"
-import type { StepId, StepProps, StepResult } from "./kit/types"
+import type { AttemptEvent, StepId, StepProps, StepResult } from "./kit/types"
 
 interface StepDefinition {
     id: StepId
@@ -81,6 +81,7 @@ interface SavedState {
     completed: StepId[]
     maxVisited: number
     results: Partial<Record<StepId, StepResult>>
+    attempts: AttemptEvent[]
 }
 
 function readSaved(key: string): SavedState | null {
@@ -99,6 +100,7 @@ function readSaved(key: string): SavedState | null {
             completed: restored,
             maxVisited: typeof parsed.maxVisited === "number" ? parsed.maxVisited : 0,
             results: (parsed.results as SavedState["results"]) ?? {},
+            attempts: Array.isArray(parsed.attempts) ? parsed.attempts : [],
         }
     } catch {
         return null
@@ -112,7 +114,8 @@ interface EconomiaActividadProps {
     onProgress?: (payload: {
         progress: Record<string, unknown>
         answers: Record<string, unknown>
-        completed: StepId[]
+        attempts: AttemptEvent[]
+        steps: StepId[]
         done: boolean
     }) => void
     /** Salir de la entrega actual y volver al formulario de entrada. */
@@ -133,6 +136,7 @@ export default function EconomiaActividad({
     const [current, setCurrent] = React.useState(0)
     const [completed, setCompleted] = React.useState<StepId[]>([])
     const [results, setResults] = React.useState<Partial<Record<StepId, StepResult>>>({})
+    const [attempts, setAttempts] = React.useState<AttemptEvent[]>([])
     const [maxVisited, setMaxVisited] = React.useState(0)
     const [hydrated, setHydrated] = React.useState(false)
 
@@ -151,13 +155,17 @@ export default function EconomiaActividad({
         setCurrent(start)
         setMaxVisited((value) => Math.max(value, saved?.maxVisited ?? 0, start))
         if (saved?.results) setResults(saved.results)
+        if (saved?.attempts) setAttempts(saved.attempts)
         setHydrated(true)
     }, [storageKey])
 
     React.useEffect(() => {
         if (!hydrated) return
-        window.localStorage.setItem(storageKey, JSON.stringify({ completed, maxVisited, results }))
-    }, [completed, maxVisited, results, hydrated, storageKey])
+        window.localStorage.setItem(
+            storageKey,
+            JSON.stringify({ completed, maxVisited, results, attempts }),
+        )
+    }, [completed, maxVisited, results, attempts, hydrated, storageKey])
 
     React.useEffect(() => {
         if (!hydrated || !onProgress) return
@@ -165,8 +173,14 @@ export default function EconomiaActividad({
             completed.map((id) => [id, { attempts: results[id]?.attempts ?? 0 }]),
         )
         const answers = Object.fromEntries(completed.map((id) => [id, results[id]?.answers ?? {}]))
-        onProgress({ progress, answers, completed, done: completed.length === STEPS.length })
-    }, [completed, results, hydrated, onProgress])
+        onProgress({
+            progress,
+            answers,
+            attempts,
+            steps: completed,
+            done: completed.includes("postal"),
+        })
+    }, [completed, results, attempts, hydrated, onProgress])
 
     React.useEffect(() => {
         if (!hydrated) return
@@ -178,6 +192,16 @@ export default function EconomiaActividad({
     const step = STEPS[current]
     const isDone = completed.includes(step.id)
     const isLast = current === STEPS.length - 1
+
+    const pushAttempt = React.useCallback(
+        (attempt: { value: string; correct: boolean | null; detail?: string }) => {
+            setAttempts((current) => [
+                ...current,
+                { ...attempt, step: step.id, at: Date.now() },
+            ])
+        },
+        [step.id],
+    )
 
     const markDone = React.useCallback(
         (result?: StepResult) => {
@@ -354,7 +378,7 @@ export default function EconomiaActividad({
                                 </>
                             }
                         >
-                            <StepBody onDone={markDone} studentNames={studentNames} />
+                            <StepBody onDone={markDone} onAttempt={pushAttempt} studentNames={studentNames} />
                         </SliceShell>
                     </div>
 
